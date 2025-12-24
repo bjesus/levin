@@ -76,13 +76,20 @@ class StatsFragment : Fragment() {
         // Session stats
         downloadRate.text = FormatUtils.formatSpeed(stats.sessionDownloadRate)
         uploadRate.text = FormatUtils.formatSpeed(stats.sessionUploadRate)
-        downloaded.text = FormatUtils.formatBytes(stats.sessionDownloaded)
-        uploaded.text = FormatUtils.formatBytes(stats.sessionUploaded)
+        downloaded.text = FormatUtils.formatSize(stats.sessionDownloaded)
+        uploaded.text = FormatUtils.formatSize(stats.sessionUploaded)
         
         // Lifetime stats
-        lifetimeDownloaded.text = FormatUtils.formatBytes(stats.lifetimeDownloaded)
-        lifetimeUploaded.text = FormatUtils.formatBytes(stats.lifetimeUploaded)
-        ratio.text = FormatUtils.formatRatio(stats.lifetimeDownloaded, stats.lifetimeUploaded)
+        lifetimeDownloaded.text = FormatUtils.formatSize(stats.lifetimeDownloaded)
+        lifetimeUploaded.text = FormatUtils.formatSize(stats.lifetimeUploaded)
+        
+        // Calculate ratio
+        val ratioValue = if (stats.lifetimeDownloaded > 0) {
+            stats.lifetimeUploaded.toDouble() / stats.lifetimeDownloaded.toDouble()
+        } else {
+            0.0
+        }
+        ratio.text = FormatUtils.formatRatio(ratioValue)
         
         // Status
         activeTorrents.text = stats.activeTorrents.toString()
