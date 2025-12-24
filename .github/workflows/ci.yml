@@ -85,6 +85,56 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+  build-packages:
+    name: Build Packages (Ubuntu ${{ matrix.ubuntu }})
+    runs-on: ubuntu-${{ matrix.ubuntu }}
+    strategy:
+      matrix:
+        ubuntu: ['22.04', '24.04']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libboost-system-dev \
+            libboost-filesystem-dev \
+            libssl-dev \
+            libtorrent-rasterbar-dev \
+            pkg-config \
+            debhelper \
+            devscripts
+
+      - name: Build Debian package
+        run: |
+          # Link packaging/debian to debian/ for dpkg-buildpackage
+          ln -s packaging/debian debian
+          dpkg-buildpackage -us -uc -b
+          mkdir -p dist
+          mv ../levin_*.deb dist/
+          # Rename with commit SHA for identification
+          COMMIT_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          mv dist/levin_*.deb dist/levin_ubuntu-${{ matrix.ubuntu }}_${COMMIT_SHORT}_amd64.deb
+
+      - name: Test package installation
+        run: |
+          sudo dpkg -i dist/*.deb || sudo apt-get install -f -y
+          levin --version
+          levin --help
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-package-ubuntu-${{ matrix.ubuntu }}
+          path: dist/*.deb
+          retention-days: 30
+          if-no-files-found: error
+
   code-quality:
     name: Code Quality Checks
     runs-on: ubuntu-latest
