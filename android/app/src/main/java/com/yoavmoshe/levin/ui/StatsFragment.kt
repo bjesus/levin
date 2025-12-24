@@ -1,27 +1,37 @@
 package com.yoavmoshe.levin.ui
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textview.MaterialTextView
 import com.yoavmoshe.levin.R
 import com.yoavmoshe.levin.data.StatisticsRepository
+import com.yoavmoshe.levin.service.LevinService
 import com.yoavmoshe.levin.util.FormatUtils
-import com.google.android.material.textview.MaterialTextView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Fragment showing real-time statistics
+ * Fragment showing real-time statistics with controls
  */
 class StatsFragment : Fragment() {
     
     private lateinit var statsRepo: StatisticsRepository
     
-    // View references
+    // Status card views
+    private lateinit var statusText: MaterialTextView
+    private lateinit var currentSpeed: MaterialTextView
+    private lateinit var activeTorrentsStatus: MaterialTextView
+    private lateinit var pauseResumeButton: MaterialButton
+    private lateinit var reloadButton: MaterialButton
+    
+    // Stats views
     private lateinit var downloadRate: MaterialTextView
     private lateinit var uploadRate: MaterialTextView
     private lateinit var downloaded: MaterialTextView
@@ -29,8 +39,6 @@ class StatsFragment : Fragment() {
     private lateinit var lifetimeDownloaded: MaterialTextView
     private lateinit var lifetimeUploaded: MaterialTextView
     private lateinit var ratio: MaterialTextView
-    private lateinit var activeTorrents: MaterialTextView
-    private lateinit var paused: MaterialTextView
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -46,7 +54,14 @@ class StatsFragment : Fragment() {
         // Initialize repository
         statsRepo = StatisticsRepository(requireContext())
         
-        // Bind views
+        // Bind status card views
+        statusText = view.findViewById(R.id.status_text)
+        currentSpeed = view.findViewById(R.id.current_speed)
+        activeTorrentsStatus = view.findViewById(R.id.active_torrents_status)
+        pauseResumeButton = view.findViewById(R.id.pause_resume_button)
+        reloadButton = view.findViewById(R.id.reload_button)
+        
+        // Bind stats views
         downloadRate = view.findViewById(R.id.download_rate)
         uploadRate = view.findViewById(R.id.upload_rate)
         downloaded = view.findViewById(R.id.downloaded)
@@ -54,8 +69,28 @@ class StatsFragment : Fragment() {
         lifetimeDownloaded = view.findViewById(R.id.lifetime_downloaded)
         lifetimeUploaded = view.findViewById(R.id.lifetime_uploaded)
         ratio = view.findViewById(R.id.ratio)
-        activeTorrents = view.findViewById(R.id.active_torrents)
-        paused = view.findViewById(R.id.paused)
+        
+        // Setup button listeners
+        pauseResumeButton.setOnClickListener {
+            val stats = statsRepo.load()
+            val action = if (stats.isPaused) {
+                LevinService.ACTION_RESUME
+            } else {
+                LevinService.ACTION_PAUSE
+            }
+            val intent = Intent(requireContext(), LevinService::class.java).apply {
+                this.action = action
+            }
+            requireContext().startService(intent)
+        }
+        
+        reloadButton.setOnClickListener {
+            // Send intent to service to reload torrents
+            val intent = Intent(requireContext(), LevinService::class.java).apply {
+                action = "com.yoavmoshe.levin.RELOAD_TORRENTS"
+            }
+            requireContext().startService(intent)
+        }
         
         // Start periodic updates
         startPeriodicUpdates()
@@ -72,6 +107,21 @@ class StatsFragment : Fragment() {
     
     private fun updateStats() {
         val stats = statsRepo.load()
+        
+        // Update status card
+        if (stats.activeTorrents == 0) {
+            statusText.text = "No Active Torrents"
+        } else if (stats.isPaused) {
+            statusText.text = "Paused"
+        } else {
+            statusText.text = "Running"
+        }
+        
+        currentSpeed.text = "⬇ ${FormatUtils.formatSpeed(stats.sessionDownloadRate)}  ⬆ ${FormatUtils.formatSpeed(stats.sessionUploadRate)}"
+        
+        activeTorrentsStatus.text = "${stats.activeTorrents} active torrent${if (stats.activeTorrents != 1) "s" else ""}"
+        
+        pauseResumeButton.text = if (stats.isPaused) "Resume" else "Pause"
         
         // Session stats
         downloadRate.text = FormatUtils.formatSpeed(stats.sessionDownloadRate)
@@ -90,9 +140,5 @@ class StatsFragment : Fragment() {
             0.0
         }
         ratio.text = FormatUtils.formatRatio(ratioValue)
-        
-        // Status
-        activeTorrents.text = stats.activeTorrents.toString()
-        paused.text = if (stats.isPaused) "Yes" else "No"
     }
 }

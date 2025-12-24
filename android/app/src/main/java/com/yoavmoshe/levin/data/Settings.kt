@@ -14,8 +14,8 @@ data class LevinSettings(
     val minFreeSpaceBytes: Long = 100L * 1024 * 1024, // 100 MB minimum free
     
     // Power & Network
-    val runOnBattery: Boolean = false,
-    val runOnCellular: Boolean = false,
+    val runOnBattery: Boolean = true,  // Changed default to true for better UX
+    val runOnCellular: Boolean = true,  // Changed default to true for better UX
     
     // BitTorrent settings (from desktop, not exposed in UI yet)
     val listenPort: Int = 6881,

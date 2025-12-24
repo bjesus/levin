@@ -10,16 +10,76 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <!-- Header -->
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/header"
+        <!-- Status Card (Top Priority) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/status_card"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="@string/stats_header"
-            android:textAppearance="?attr/textAppearanceHeadlineMedium"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="?attr/colorPrimaryContainer"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Status Text -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/status_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Running"
+                    android:textAppearance="?attr/textAppearanceHeadlineSmall"
+                    android:textStyle="bold" />
+
+                <!-- Current Speed Display -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/current_speed"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="⬇ 0 KB/s  ⬆ 0 KB/s"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <!-- Active Torrents -->
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/active_torrents_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="0 active torrents"
+                    android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+                <!-- Buttons Row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal"
+                    android:gravity="start">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/pause_resume_button"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pause"
+                        android:layout_marginEnd="8dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/reload_button"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Reload Torrents" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <!-- Session Stats Card -->
         <com.google.android.material.card.MaterialCardView
@@ -30,7 +90,7 @@
             app:cardElevation="2dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/header">
+            app:layout_constraintTop_toBottomOf="@id/status_card">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -226,77 +286,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="0.00"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Status Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/status_card"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardElevation="2dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/lifetime_card">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/status"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <!-- Active Torrents -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/active_torrents"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/active_torrents"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Paused -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/paused"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/paused"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="No"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
                         android:textStyle="bold" />
                 </LinearLayout>

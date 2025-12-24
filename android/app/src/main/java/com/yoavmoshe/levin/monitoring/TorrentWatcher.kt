@@ -41,13 +41,16 @@ class TorrentWatcher(
         // Create and start FileObserver
         observer = object : FileObserver(
             watchDirectory,
-            CREATE or MOVED_TO
+            CREATE or MOVED_TO or CLOSE_WRITE
         ) {
             override fun onEvent(event: Int, path: String?) {
+                Log.d(TAG, "FileObserver event: ${eventToString(event)}, path=$path")
+                
                 if (path == null) return
                 
                 // Only process .torrent files
                 if (!path.endsWith(".torrent", ignoreCase = true)) {
+                    Log.d(TAG, "Ignoring non-torrent file: $path")
                     return
                 }
                 
@@ -58,15 +61,27 @@ class TorrentWatcher(
                 
                 // Verify file is readable and non-empty
                 if (file.exists() && file.canRead() && file.length() > 0) {
-                    Log.i(TAG, "New torrent file detected: $path")
+                    Log.i(TAG, "New torrent file detected: $path (${file.length()} bytes)")
                     onTorrentAdded(file)
                 } else {
-                    Log.w(TAG, "Torrent file not ready: $path")
+                    Log.w(TAG, "Torrent file not ready: $path (exists=${file.exists()}, canRead=${file.canRead()}, size=${file.length()})")
                 }
             }
-        }.also { it.startWatching() }
+            
+            private fun eventToString(event: Int): String {
+                return when (event) {
+                    CREATE -> "CREATE"
+                    MOVED_TO -> "MOVED_TO"
+                    CLOSE_WRITE -> "CLOSE_WRITE"
+                    else -> "UNKNOWN($event)"
+                }
+            }
+        }.also { 
+            it.startWatching()
+            Log.i(TAG, "FileObserver.startWatching() called")
+        }
         
-        Log.i(TAG, "TorrentWatcher started successfully")
+        Log.i(TAG, "TorrentWatcher started successfully, watching events: CREATE, MOVED_TO, CLOSE_WRITE")
     }
     
     /**

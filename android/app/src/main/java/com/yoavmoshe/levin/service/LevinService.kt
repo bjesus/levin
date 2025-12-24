@@ -32,6 +32,7 @@ class LevinService : Service() {
         const val ACTION_STOP = "com.yoavmoshe.levin.STOP"
         const val ACTION_PAUSE = "com.yoavmoshe.levin.PAUSE"
         const val ACTION_RESUME = "com.yoavmoshe.levin.RESUME"
+        const val ACTION_RELOAD_TORRENTS = "com.yoavmoshe.levin.RELOAD_TORRENTS"
         
         private const val TAG = "LevinService"
     }
@@ -94,6 +95,7 @@ class LevinService : Service() {
             ACTION_STOP -> handleStop()
             ACTION_PAUSE -> handlePause()
             ACTION_RESUME -> handleResume()
+            ACTION_RELOAD_TORRENTS -> handleReload()
             else -> {
                 // Default to START if no action specified
                 if (!isRunning) {
@@ -176,6 +178,12 @@ class LevinService : Service() {
     private fun handleResume() {
         Log.i(TAG, "Resuming downloads")
         sessionManager.resume()
+        updateNotification()
+    }
+    
+    private fun handleReload() {
+        Log.i(TAG, "Manually reloading torrents from watch directory")
+        scanAndAddTorrents()
         updateNotification()
     }
     
