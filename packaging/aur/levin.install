@@ -1,0 +1,27 @@
+post_install() {
+    echo ""
+    echo "Levin has been installed successfully!"
+    echo ""
+    echo "To get started:"
+    echo "  1. Run 'levind' once to create default configuration"
+    echo "  2. Edit ~/.config/levin/levin.toml to customize settings"
+    echo "  3. Enable the service: systemctl --user enable levin"
+    echo "  4. Start the service: systemctl --user start levin"
+    echo ""
+    echo "For more information, visit: https://github.com/bjesus/levin"
+    echo ""
+}
+
+pre_remove() {
+    # Stop and disable user service if running
+    if systemctl --user is-active levin.service >/dev/null 2>&1; then
+        systemctl --user stop levin.service || true
+    fi
+    if systemctl --user is-enabled levin.service >/dev/null 2>&1; then
+        systemctl --user disable levin.service || true
+    fi
+}
+
+post_upgrade() {
+    post_install
+}

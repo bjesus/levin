@@ -1,0 +1,139 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04, macos-latest]
+        build_type: [Debug, Release]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libboost-system-dev \
+            libboost-filesystem-dev \
+            libssl-dev \
+            libtorrent-rasterbar-dev \
+            pkg-config
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake boost libtorrent-rasterbar openssl@3 pkg-config
+
+      - name: Configure CMake
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DBUILD_TESTS=ON \
+            ${{ runner.os == 'macOS' && '-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3' || '' }}
+
+      - name: Build
+        run: cmake --build build -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+
+      - name: Run tests
+        run: |
+          cd build
+          ctest --output-on-failure --verbose
+
+      - name: Test binaries
+        run: |
+          ./build/levind --version
+          ./build/cli/levin --version
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libboost-system-dev \
+            libboost-filesystem-dev \
+            libssl-dev \
+            libtorrent-rasterbar-dev \
+            pkg-config \
+            cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=all \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --error-exitcode=1 \
+            -I src \
+            src/ cli/ 2>&1 | tee cppcheck.log
+
+      - name: Check for TODO/FIXME
+        run: |
+          if grep -rn "TODO\|FIXME" src/ cli/ --exclude-dir=build; then
+            echo "::warning::Found TODO or FIXME comments"
+          fi
+
+  package-validation:
+    name: Validate Package Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate Debian package
+        run: |
+          if [ ! -f packaging/debian/control ]; then
+            echo "::error::packaging/debian/control missing"
+            exit 1
+          fi
+          if [ ! -f packaging/debian/rules ]; then
+            echo "::error::packaging/debian/rules missing"
+            exit 1
+          fi
+          if [ ! -x packaging/debian/rules ]; then
+            echo "::error::packaging/debian/rules not executable"
+            exit 1
+          fi
+
+      - name: Validate RPM spec
+        run: |
+          if [ ! -f packaging/rpm/levin.spec ]; then
+            echo "::error::packaging/rpm/levin.spec missing"
+            exit 1
+          fi
+
+      - name: Validate AUR PKGBUILD
+        run: |
+          if [ ! -f packaging/aur/PKGBUILD ]; then
+            echo "::error::packaging/aur/PKGBUILD missing"
+            exit 1
+          fi
+
+      - name: Check systemd service
+        run: |
+          if [ ! -f scripts/levin.service ]; then
+            echo "::error::systemd service file missing"
+            exit 1
+          fi

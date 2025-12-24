@@ -1,0 +1,255 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-debian:
+    name: Build Debian Package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ubuntu: ['20.04', '22.04', '24.04']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            libboost-system-dev \
+            libboost-filesystem-dev \
+            libssl-dev \
+            libtorrent-rasterbar-dev \
+            pkg-config \
+            debhelper \
+            devscripts
+
+      - name: Build package
+        run: |
+          # Link packaging/debian to debian/ for dpkg-buildpackage
+          ln -s packaging/debian debian
+          dpkg-buildpackage -us -uc -b
+          mkdir -p dist
+          mv ../levin_*.deb dist/
+          mv dist/levin_*.deb dist/levin_${{ github.ref_name }}_ubuntu-${{ matrix.ubuntu }}_amd64.deb
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-ubuntu-${{ matrix.ubuntu }}
+          path: dist/*.deb
+
+  build-rpm:
+    name: Build RPM Package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fedora: ['39', '40']
+    container:
+      image: fedora:${{ matrix.fedora }}
+    
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            git \
+            cmake \
+            gcc-c++ \
+            boost-devel \
+            openssl-devel \
+            rb_libtorrent-devel \
+            pkgconfig \
+            rpm-build \
+            rpmdevtools
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up RPM build tree
+        run: |
+          rpmdev-setuptree
+          cp packaging/rpm/levin.spec ~/rpmbuild/SPECS/
+          tar czf ~/rpmbuild/SOURCES/levin-${{ github.ref_name }}.tar.gz \
+            --transform "s,^,levin-${{ github.ref_name }}/," \
+            --exclude='.git' \
+            --exclude='build' \
+            .
+
+      - name: Build RPM
+        run: |
+          cd ~/rpmbuild/SPECS
+          rpmbuild -bb levin.spec
+          mkdir -p $GITHUB_WORKSPACE/dist
+          cp ~/rpmbuild/RPMS/*/*.rpm $GITHUB_WORKSPACE/dist/
+          mv $GITHUB_WORKSPACE/dist/levin-*.rpm \
+             $GITHUB_WORKSPACE/dist/levin-${{ github.ref_name }}-fedora${{ matrix.fedora }}.x86_64.rpm
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-fedora-${{ matrix.fedora }}
+          path: dist/*.rpm
+
+  build-macos:
+    name: Build macOS Binary
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install cmake boost libtorrent-rasterbar openssl@3 pkg-config
+
+      - name: Build
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTS=OFF \
+            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3
+          cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Create tarball
+        run: |
+          mkdir -p dist/levin-${{ github.ref_name }}-macos/bin
+          cp build/levind dist/levin-${{ github.ref_name }}-macos/bin/
+          cp build/cli/levin dist/levin-${{ github.ref_name }}-macos/bin/
+          cp LICENSE dist/levin-${{ github.ref_name }}-macos/
+          cp README.md dist/levin-${{ github.ref_name }}-macos/
+          cd dist
+          tar czf levin-${{ github.ref_name }}-macos-arm64.tar.gz levin-${{ github.ref_name }}-macos/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binary
+          path: dist/*.tar.gz
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-debian, build-rpm, build-macos]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          find artifacts -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) -exec cp {} release/ \;
+          ls -lh release/
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## Levin ${{ github.ref_name }}
+          
+          BitTorrent archive daemon for distributed content preservation.
+          
+          ### Installation
+          
+          #### Debian/Ubuntu
+          ```bash
+          # Download the .deb for your Ubuntu version
+          sudo dpkg -i levin_${{ github.ref_name }}_ubuntu-*.deb
+          sudo apt-get install -f  # Install dependencies if needed
+          ```
+          
+          #### Fedora/RHEL
+          ```bash
+          # Download the .rpm for your Fedora version
+          sudo dnf install levin-${{ github.ref_name }}-fedora*.rpm
+          ```
+          
+          #### Arch Linux
+          ```bash
+          # Install from AUR
+          yay -S levin
+          # or
+          paru -S levin
+          ```
+          
+          #### macOS
+          ```bash
+          # Using Homebrew
+          brew tap bjesus/levin
+          brew install levin
+          
+          # Or manually from tarball
+          tar xzf levin-${{ github.ref_name }}-macos-arm64.tar.gz
+          sudo cp levin-${{ github.ref_name }}-macos/bin/* /usr/local/bin/
+          ```
+          
+          ### Getting Started
+          
+          1. Run `levind` once to create default configuration
+          2. Edit `~/.config/levin/levin.toml` to customize settings
+          3. Enable the service: `systemctl --user enable levin` (Linux) or `brew services start levin` (macOS)
+          4. Start the service: `systemctl --user start levin` (Linux)
+          
+          ### What's New
+          
+          See [CHANGELOG.md](CHANGELOG.md) for details.
+          
+          ### Documentation
+          
+          - [Installation Guide](INSTALL.md)
+          - [README](README.md)
+          - [Configuration Reference](https://github.com/bjesus/levin#configuration)
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-aur:
+    name: Update AUR Package
+    needs: create-release
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'beta') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          wget https://github.com/bjesus/levin/archive/${{ github.ref_name }}.tar.gz
+          SHA256=$(sha256sum ${{ github.ref_name }}.tar.gz | awk '{print $1}')
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+
+      - name: Update PKGBUILD
+        run: |
+          sed -i "s/pkgver=.*/pkgver=${{ github.ref_name }}/" PKGBUILD
+          sed -i "s/sha256sums=.*/sha256sums=('${{ steps.sha256.outputs.sha256 }}')/" PKGBUILD
+
+      - name: Notify about AUR update
+        run: |
+          echo "::notice::AUR PKGBUILD needs manual update"
+          echo "::notice::New SHA256: ${{ steps.sha256.outputs.sha256 }}"
+          echo "::notice::Please update the AUR repository manually"

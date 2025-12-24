@@ -1,0 +1,31 @@
+Source: levin
+Section: net
+Priority: optional
+Maintainer: bjesus <bjesus@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               cmake (>= 3.15),
+               g++ (>= 9),
+               libboost-system-dev (>= 1.70),
+               libboost-filesystem-dev (>= 1.70),
+               libssl-dev,
+               libtorrent-rasterbar-dev (>= 2.0),
+               pkg-config
+Standards-Version: 4.6.0
+Homepage: https://github.com/bjesus/levin
+Vcs-Git: https://github.com/bjesus/levin.git
+Vcs-Browser: https://github.com/bjesus/levin
+
+Package: levin
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: BitTorrent archive daemon for distributed content preservation
+ Levin is a lightweight BitTorrent daemon designed for archival and content
+ preservation. It monitors directories for torrent files and automatically
+ downloads and seeds content while managing disk space efficiently.
+ .
+ Key features:
+  * Automatic torrent monitoring and management
+  * Intelligent disk space management
+  * Command-line interface for control
+  * Statistics and monitoring
+  * User-level installation (no root required)

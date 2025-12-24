@@ -1,0 +1,43 @@
+# Maintainer: bjesus <bjesus@users.noreply.github.com>
+
+pkgname=levin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='BitTorrent archive daemon for distributed content preservation'
+arch=('x86_64' 'aarch64')
+url='https://github.com/bjesus/levin'
+license=('MIT')
+depends=('boost-libs' 'openssl' 'libtorrent-rasterbar')
+makedepends=('cmake' 'boost' 'gcc')
+source=("${pkgname}-${pkgver}.tar.gz::https://github.com/bjesus/levin/archive/v${pkgver}.tar.gz")
+sha256sums=('SKIP')  # Update this with actual checksum after release
+install=levin.install
+
+build() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    cmake -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DBUILD_TESTS=OFF
+    cmake --build build
+}
+
+check() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    # Tests are disabled in build, enable if needed
+}
+
+package() {
+    cd "${srcdir}/${pkgname}-${pkgver}"
+    DESTDIR="${pkgdir}" cmake --install build
+    
+    # Install systemd user service
+    install -Dm644 scripts/levin.service \
+        "${pkgdir}/usr/lib/systemd/user/levin.service"
+    
+    # Install license
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    
+    # Install documentation
+    install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}

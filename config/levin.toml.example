@@ -1,0 +1,99 @@
+# Archiver Configuration File
+# Copy this to /etc/levin/levin.toml and customize
+
+[daemon]
+# PID file location
+pid_file = "/var/run/levin.pid"
+
+# Log file location
+log_file = "/var/log/levin.log"
+
+# Log level: "trace", "debug", "info", "warn", "error", "critical"
+log_level = "info"
+
+[paths]
+# Directory to watch for .torrent files (flat structure, no subdirectories)
+watch_directory = "/var/lib/levin/torrents"
+
+# Directory to store downloaded data
+data_directory = "/var/lib/levin/data"
+
+# Session state file (for resuming downloads)
+session_state = "/var/lib/levin/session.state"
+
+# Statistics file (lifetime stats persistence)
+statistics_file = "/var/lib/levin/statistics.json"
+
+[disk]
+# Minimum free space in bytes (10GB = 10737418240)
+# This is an absolute minimum - if free space drops below this, data will be removed
+min_free_bytes = 10737418240
+
+# Minimum free space as percentage of total disk (0.10 = 10%)
+# The effective minimum is max(min_free_bytes, total_disk * min_free_percentage)
+min_free_percentage = 0.10
+
+# How often to check disk space (in seconds)
+check_interval_seconds = 60
+
+[torrents]
+# How often to update seeder counts from DHT/trackers (in minutes)
+seeder_update_interval_minutes = 15
+
+# How often to scan watch directory for new .torrent files (in seconds)
+watch_directory_scan_interval_seconds = 30
+
+# Maximum connections per torrent
+max_connections_per_torrent = 50
+
+# Maximum upload slots per torrent
+max_upload_slots_per_torrent = 20
+
+[limits]
+# Maximum download rate in KB/s (0 = unlimited)
+max_download_rate_kbps = 0
+
+# Maximum upload rate in KB/s (0 = unlimited)
+max_upload_rate_kbps = 0
+
+# Maximum total connections across all torrents
+max_total_connections = 200
+
+# Maximum active downloads (downloading state)
+max_active_downloads = 5
+
+# Maximum active seeds (seeding state, -1 = unlimited)
+max_active_seeds = -1
+
+# Maximum active torrents total
+max_active_torrents = 10
+
+[network]
+# Port to listen on for incoming connections
+listen_port = 6881
+
+# Enable DHT (Distributed Hash Table) for peer discovery
+enable_dht = true
+
+# Enable LSD (Local Service Discovery)
+enable_lsd = true
+
+# Enable UPnP for automatic port forwarding
+enable_upnp = true
+
+# Enable NAT-PMP for automatic port forwarding
+enable_natpmp = true
+
+# Enable WebRTC support (for browser-based clients)
+enable_webrtc = true
+
+# STUN server for WebRTC NAT traversal
+webrtc_stun_server = "stun:stun.l.google.com:19302"
+
+[cli]
+# Unix socket path for CLI communication
+control_socket = "/var/run/levin.sock"
+
+[statistics]
+# How often to save statistics to disk (in minutes)
+save_interval_minutes = 5

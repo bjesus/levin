@@ -1,0 +1,23 @@
+[Unit]
+Description=Levin - BitTorrent Archive Daemon
+Documentation=https://github.com/bjesus/levin
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/levind --config %h/.config/levin/levin.toml
+Restart=on-failure
+RestartSec=10
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=default.target

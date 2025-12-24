@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|deconfigure)
+        # Stop and disable user service if running
+        if systemctl --user is-active levin.service >/dev/null 2>&1; then
+            systemctl --user stop levin.service || true
+        fi
+        if systemctl --user is-enabled levin.service >/dev/null 2>&1; then
+            systemctl --user disable levin.service || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

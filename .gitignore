@@ -1,0 +1,55 @@
+# Build directories
+build/
+cmake-build-*/
+.cmake/
+.cache/
+# Compiled binaries
+*.o
+*.so
+*.a
+*.dylib
+archiverd
+archiver
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Runtime files
+*.pid
+*.log
+*.sock
+
+# Dependencies downloaded by CMake
+_deps/
+
+# Test binaries
+tests/test_*
+!tests/*.cpp
+
+# Configuration (keep examples)
+*.toml
+!*.toml.example
+
+# Session state
+*.state
+*.fastresume
+
+# Statistics
+statistics.json
+
+# Torrent data
+data/
+torrents/
