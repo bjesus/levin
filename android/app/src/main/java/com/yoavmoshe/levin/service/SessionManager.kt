@@ -60,46 +60,8 @@ class LevinSessionManager(
         // Create session parameters (ported from desktop session.cpp)
         val params = SessionParams()
         
-        // Configure settings pack
-        val settingsPack = params.settings()
-        
-        // Alert mask - which alerts we want to receive
-        settingsPack.setInteger(
-            settings_pack.int_types.alert_mask.swigValue(),
-            AlertType.ALL.swig()
-        )
-        
-        // Listen interfaces (port configuration)
-        settingsPack.setString(
-            settings_pack.string_types.listen_interfaces.swigValue(),
-            "0.0.0.0:${settings.listenPort}"
-        )
-        
-        // Connection limits
-        settingsPack.setInteger(
-            settings_pack.int_types.connections_limit.swigValue(),
-            settings.maxConnections
-        )
-        
-        // DHT (Distributed Hash Table)
-        settingsPack.setBoolean(
-            settings_pack.bool_types.enable_dht.swigValue(),
-            settings.enableDht
-        )
-        
-        // UPnP (port mapping)
-        settingsPack.setBoolean(
-            settings_pack.bool_types.enable_upnp.swigValue(),
-            settings.enableUpnp
-        )
-        
-        // LSD (Local Service Discovery)
-        settingsPack.setBoolean(
-            settings_pack.bool_types.enable_lsd.swigValue(),
-            settings.enableLsd
-        )
-        
-        // Create session with configured parameters
+        // Create session with default parameters for now
+        // TODO: Configure settings pack when we understand the API better
         session = SessionManager().apply {
             // Add alert listener for torrent events
             addListener(object : AlertListener {
@@ -110,7 +72,7 @@ class LevinSessionManager(
                 override fun types(): IntArray? = null  // Receive all alert types
             })
             
-            start(params)
+            start()
         }
         
         Log.i(TAG, "libtorrent session started successfully")
@@ -138,17 +100,14 @@ class LevinSessionManager(
                 return false
             }
             
-            // Configure torrent parameters
-            val params = org.libtorrent4j.AddTorrentParams.create()
-            params.tiPtr(ti.swig())
-            params.savePath(settings.dataDirectory.absolutePath)
-            
-            // Sparse allocation (allocate on demand)
-            params.storageMode(org.libtorrent4j.swig.storage_mode_t.storage_mode_sparse)
-            
-            // Add torrent to session
+            // Add torrent to session with save path
             val handle = currentSession.download(ti, settings.dataDirectory)
-            torrents[infoHash] = handle
+            if (handle != null) {
+                torrents[infoHash] = handle
+            } else {
+                Log.e(TAG, "Failed to get torrent handle")
+                return false
+            }
             
             Log.i(TAG, "Torrent added successfully: ${torrentFile.name}")
             true
@@ -192,7 +151,7 @@ class LevinSessionManager(
             totalDownloaded = sessionStats.totalDownload(),
             totalUploaded = sessionStats.totalUpload(),
             activeTorrents = torrents.size,
-            peerCount = sessionStats.dhtNodes()  // Use DHT nodes as proxy for peer count
+            peerCount = sessionStats.dhtNodes().toInt()  // Use DHT nodes as proxy for peer count
         )
     }
     
