@@ -100,7 +100,7 @@ class NotificationHelper(private val context: Context) {
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_sys_download)  // TODO: Add custom icon
+            .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)  // Can't be dismissed by swipe
             .setContentIntent(openPendingIntent)
             .addAction(actionIcon, actionText, actionPendingIntent)
