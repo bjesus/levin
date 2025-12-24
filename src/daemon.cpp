@@ -246,7 +246,7 @@ bool Daemon::initialize_components() {
                 if (!paused_for_battery_) {
                     LOG_INFO("Battery power detected - pausing downloads");
                     paused_for_battery_ = true;
-                    piece_manager_->emergency_pause_downloads();
+                    piece_manager_->emergency_pause_downloads("battery power");
                 }
             }
         });
@@ -255,7 +255,7 @@ bool Daemon::initialize_components() {
         if (!power_monitor_->is_on_ac_power()) {
             LOG_INFO("Starting on battery power - pausing downloads");
             paused_for_battery_ = true;
-            piece_manager_->emergency_pause_downloads();
+            piece_manager_->emergency_pause_downloads("battery power");
         }
     }
 

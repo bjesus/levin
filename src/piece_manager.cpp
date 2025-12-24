@@ -219,7 +219,7 @@ void PieceManager::rebalance_disk_usage() {
     }
 }
 
-void PieceManager::emergency_pause_downloads() {
+void PieceManager::emergency_pause_downloads(const std::string& reason) {
     LOG_WARN("Emergency mode: Pausing all active downloads");
     
     for (auto& [info_hash, metrics] : torrents_) {
@@ -236,7 +236,7 @@ void PieceManager::emergency_pause_downloads() {
         }
     }
     
-    LOG_WARN("All downloads paused due to disk space emergency");
+    LOG_WARN("All downloads paused due to {}", reason);
 }
 
 void PieceManager::download_pieces(uint64_t available_bytes) {
