@@ -237,25 +237,25 @@ bool Daemon::initialize_components() {
             if (on_ac_power) {
                 // Plugged into AC - resume if we were paused for battery
                 if (paused_for_battery_) {
-                    LOG_INFO("AC power detected - resuming downloads");
+                    LOG_INFO("AC power detected - resuming");
                     paused_for_battery_ = false;
-                    piece_manager_->rebuild_queues();
+                    session_->resume();
                 }
             } else {
-                // Running on battery - pause
+                // Running on battery - pause entire session
                 if (!paused_for_battery_) {
-                    LOG_INFO("Battery power detected - pausing downloads");
+                    LOG_INFO("Battery power detected - pausing all network activity");
                     paused_for_battery_ = true;
-                    piece_manager_->emergency_pause_downloads("battery power");
+                    session_->pause();
                 }
             }
         });
         
         // Check initial state and pause if needed
         if (!power_monitor_->is_on_ac_power()) {
-            LOG_INFO("Starting on battery power - pausing downloads");
+            LOG_INFO("Starting on battery power - pausing all network activity");
             paused_for_battery_ = true;
-            piece_manager_->emergency_pause_downloads("battery power");
+            session_->pause();
         }
     }
 

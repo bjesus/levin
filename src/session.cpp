@@ -294,6 +294,26 @@ std::vector<lt::torrent_handle> Session::get_torrents() {
     return handles;
 }
 
+void Session::pause() {
+    if (!session_) {
+        LOG_WARN("Cannot pause: session not initialized");
+        return;
+    }
+    
+    LOG_INFO("Pausing libtorrent session (all network activity will stop)");
+    session_->pause();
+}
+
+void Session::resume() {
+    if (!session_) {
+        LOG_WARN("Cannot resume: session not initialized");
+        return;
+    }
+    
+    LOG_INFO("Resuming libtorrent session");
+    session_->resume();
+}
+
 std::string Session::info_hash_to_string(const lt::sha1_hash& hash) {
     std::ostringstream oss;
     oss << hash;

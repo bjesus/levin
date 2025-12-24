@@ -66,6 +66,16 @@ public:
      * Get all torrent handles.
      */
     std::vector<lt::torrent_handle> get_torrents();
+    
+    /**
+     * Pause the entire session (stops all network activity).
+     */
+    void pause();
+    
+    /**
+     * Resume the session (restarts network activity).
+     */
+    void resume();
 
     /**
      * Get data directory.

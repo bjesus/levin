@@ -40,6 +40,9 @@ struct PowerMonitor::Impl {
                                        gpointer user_data) {
         auto* self = static_cast<Impl*>(user_data);
         
+        LOG_DEBUG("DBus signal received: {} on {}", signal_name ? signal_name : "null", 
+                  object_path ? object_path : "null");
+        
         // Only handle UPower DisplayDevice changes
         if (g_strcmp0(object_path, "/org/freedesktop/UPower/devices/DisplayDevice") != 0) {
             return;
@@ -199,6 +202,10 @@ void PowerMonitor::start(PowerCallback callback) {
 
 #ifdef POWER_MONITOR_LINUX
     impl_->monitor_thread = std::thread([this]() {
+        // Create and set thread-default context FIRST
+        GMainContext* context = g_main_context_new();
+        g_main_context_push_thread_default(context);
+        
         GError* error = nullptr;
         impl_->connection = g_bus_get_sync(G_BUS_TYPE_SYSTEM, nullptr, &error);
         
@@ -211,6 +218,8 @@ void PowerMonitor::start(PowerCallback callback) {
                 impl_->initial_state_ready = true;
             }
             impl_->init_cv.notify_one();
+            g_main_context_pop_thread_default(context);
+            g_main_context_unref(context);
             return;
         }
 
@@ -224,8 +233,8 @@ void PowerMonitor::start(PowerCallback callback) {
             impl_->initial_state_ready = true;
         }
         impl_->init_cv.notify_one();
-
-        // Subscribe to UPower signals
+        
+        // Subscribe to UPower signals (will use thread-default context)
         impl_->subscription_id = g_dbus_connection_signal_subscribe(
             impl_->connection,
             "org.freedesktop.UPower",
@@ -239,13 +248,16 @@ void PowerMonitor::start(PowerCallback callback) {
             nullptr
         );
 
-        // Run GLib main loop
-        GMainContext* context = g_main_context_new();
-        g_main_context_push_thread_default(context);
+        LOG_INFO("Subscribed to UPower signals with ID: {}", impl_->subscription_id);
+
+        // Create and run GLib main loop
         impl_->main_loop = g_main_loop_new(context, FALSE);
 
+        LOG_INFO("Starting GLib main loop to monitor power state changes");
         // Run the main loop (this will block until quit is called)
         g_main_loop_run(impl_->main_loop);
+
+        LOG_DEBUG("GLib main loop exited");
 
         g_main_loop_unref(impl_->main_loop);
         impl_->main_loop = nullptr;
