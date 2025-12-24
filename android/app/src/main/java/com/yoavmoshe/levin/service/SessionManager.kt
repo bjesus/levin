@@ -66,7 +66,7 @@ class LevinSessionManager(
         // Alert mask - which alerts we want to receive
         settingsPack.setInteger(
             settings_pack.int_types.alert_mask.swigValue(),
-            org.libtorrent4j.alerts.AlertType.ALL.swig()
+            AlertType.ALL.swig()
         )
         
         // Listen interfaces (port configuration)
@@ -139,16 +139,15 @@ class LevinSessionManager(
             }
             
             // Configure torrent parameters
-            val params = org.libtorrent4j.AddTorrentParams().apply {
-                tiPtr(ti.swig())
-                savePath(settings.dataDirectory.absolutePath)
-                
-                // Sparse allocation (allocate on demand)
-                storageMode(org.libtorrent4j.swig.storage_mode_t.storage_mode_sparse)
-            }
+            val params = org.libtorrent4j.AddTorrentParams.create()
+            params.tiPtr(ti.swig())
+            params.savePath(settings.dataDirectory.absolutePath)
+            
+            // Sparse allocation (allocate on demand)
+            params.storageMode(org.libtorrent4j.swig.storage_mode_t.storage_mode_sparse)
             
             // Add torrent to session
-            val handle = currentSession.download(params, null)
+            val handle = currentSession.download(ti, settings.dataDirectory)
             torrents[infoHash] = handle
             
             Log.i(TAG, "Torrent added successfully: ${torrentFile.name}")
@@ -188,12 +187,12 @@ class LevinSessionManager(
         val sessionStats = currentSession.stats()
         
         return Stats(
-            downloadRate = sessionStats.downloadRate().toLong(),
-            uploadRate = sessionStats.uploadRate().toLong(),
+            downloadRate = sessionStats.downloadRate(),
+            uploadRate = sessionStats.uploadRate(),
             totalDownloaded = sessionStats.totalDownload(),
             totalUploaded = sessionStats.totalUpload(),
             activeTorrents = torrents.size,
-            peerCount = sessionStats.numPeers()
+            peerCount = sessionStats.dhtNodes()  // Use DHT nodes as proxy for peer count
         )
     }
     
@@ -248,7 +247,8 @@ class LevinSessionManager(
             AlertType.TORRENT_FINISHED -> {
                 val finishedAlert = alert as TorrentFinishedAlert
                 val handle = finishedAlert.handle()
-                Log.i(TAG, "Torrent finished: ${handle.name()}")
+                val name = handle.torrentFile()?.name() ?: "unknown"
+                Log.i(TAG, "Torrent finished: $name")
                 // TODO: Optionally remove .torrent file from watch directory
             }
             
