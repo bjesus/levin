@@ -9,7 +9,24 @@
     <string name="action_resume">Resume</string>
     <string name="action_settings">Settings</string>
     
+    <!-- Navigation -->
+    <string name="stats">Stats</string>
+    <string name="settings">Settings</string>
+    
     <!-- Stats Fragment -->
+    <string name="stats_header">Statistics</string>
+    <string name="session_stats">Session</string>
+    <string name="lifetime_stats">Lifetime</string>
+    <string name="status">Status</string>
+    <string name="download_rate">Download</string>
+    <string name="upload_rate">Upload</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="uploaded">Uploaded</string>
+    <string name="total_downloaded">Total Downloaded</string>
+    <string name="total_uploaded">Total Uploaded</string>
+    <string name="ratio">Ratio</string>
+    <string name="active_torrents">Active Torrents</string>
+    <string name="paused">Paused</string>
     <string name="status_running">Status: Running</string>
     <string name="status_paused">Status: Paused</string>
     <string name="network_section">Network</string>

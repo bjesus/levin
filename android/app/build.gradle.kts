@@ -56,6 +56,13 @@ dependencies {
     // Preferences
     implementation("androidx.preference:preference-ktx:1.2.1")
     
+    // Navigation
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.6")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.6")
+    
+    // Fragment
+    implementation("androidx.fragment:fragment-ktx:1.6.2")
+    
     // libtorrent4j
     val libtorrentVersion = "2.1.0-38"
     implementation("org.libtorrent4j:libtorrent4j:$libtorrentVersion")

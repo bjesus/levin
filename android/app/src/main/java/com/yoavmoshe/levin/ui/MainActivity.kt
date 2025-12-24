@@ -5,15 +5,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.setupWithNavController
+import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.yoavmoshe.levin.R
 import com.yoavmoshe.levin.service.LevinService
 
 /**
- * Main activity - entry point of the app
- * For now, just starts the service and shows a simple UI
+ * Main activity with bottom navigation
  */
 class MainActivity : AppCompatActivity() {
     
@@ -23,26 +25,15 @@ class MainActivity : AppCompatActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
         
-        // Simple temporary UI
-        val textView = TextView(this).apply {
-            text = buildString {
-                appendLine("Levin - BitTorrent Archiver")
-                appendLine()
-                appendLine("Service is running in the background.")
-                appendLine()
-                appendLine("Check your notification panel for status.")
-                appendLine()
-                appendLine("Torrent files: /Android/data/com.yoavmoshe.levin/files/torrents/")
-                appendLine("Downloaded data: /Android/data/com.yoavmoshe.levin/files/data/")
-                appendLine()
-                appendLine("Note: Full UI coming in Phase 5!")
-            }
-            textSize = 16f
-            setPadding(32, 32, 32, 32)
-        }
+        // Setup navigation
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
+        val navController = navHostFragment.navController
         
-        setContentView(textView)
+        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
+        bottomNav.setupWithNavController(navController)
         
         // Request notification permission (Android 13+)
         requestNotificationPermission()

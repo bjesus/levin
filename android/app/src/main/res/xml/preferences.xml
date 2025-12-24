@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="@string/settings_power_category">
+
+        <SwitchPreferenceCompat
+            android:key="run_on_battery"
+            android:title="@string/pref_run_on_battery"
+            android:summary="@string/pref_run_on_battery_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:key="run_on_cellular"
+            android:title="@string/pref_run_on_cellular"
+            android:summary="@string/pref_run_on_cellular_summary"
+            android:defaultValue="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/settings_storage_category">
+
+        <Preference
+            android:key="storage_limit"
+            android:title="@string/pref_storage_limit"
+            android:summary="1 GB"
+            android:enabled="false" />
+
+        <Preference
+            android:key="watch_directory"
+            android:title="@string/pref_watch_directory"
+            android:summary="/Android/data/com.yoavmoshe.levin/files/torrents/"
+            android:enabled="false" />
+
+        <Preference
+            android:key="data_directory"
+            android:title="@string/pref_data_directory"
+            android:summary="/Android/data/com.yoavmoshe.levin/files/data/"
+            android:enabled="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="@string/settings_about_category">
+
+        <Preference
+            android:key="version"
+            android:title="@string/pref_version"
+            android:summary="0.1.0" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
