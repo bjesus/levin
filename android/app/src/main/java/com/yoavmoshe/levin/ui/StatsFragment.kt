@@ -107,10 +107,11 @@ class StatsFragment : Fragment() {
         val stats = statsRepo.load()
         
         // Update status card
-        if (stats.activeTorrents == 0) {
-            statusText.text = "No Active Torrents"
-        } else if (stats.isPaused) {
+        // Priority: 1) Check if paused first, 2) Then check if no torrents
+        if (stats.isPaused) {
             statusText.text = "Paused"
+        } else if (stats.activeTorrents == 0) {
+            statusText.text = "No Active Torrents"
         } else {
             statusText.text = "Running"
         }
