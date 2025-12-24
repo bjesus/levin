@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Levin</string>
+    <string name="notification_channel_name">Levin Service</string>
+    <string name="notification_channel_description">Background torrent archiving</string>
+    <string name="notification_title_running">Levin - Running</string>
+    <string name="notification_title_paused">Levin - Paused</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_settings">Settings</string>
+    
+    <!-- Stats Fragment -->
+    <string name="status_running">Status: Running</string>
+    <string name="status_paused">Status: Paused</string>
+    <string name="network_section">Network</string>
+    <string name="storage_section">Storage</string>
+    <string name="torrents_section">Torrents</string>
+    
+    <!-- Settings -->
+    <string name="settings_storage_category">Storage</string>
+    <string name="settings_power_category">Power &amp; Network</string>
+    <string name="settings_about_category">About</string>
+    
+    <string name="pref_storage_limit">Storage Limit</string>
+    <string name="pref_watch_directory">Watch Directory</string>
+    <string name="pref_data_directory">Data Directory</string>
+    <string name="pref_run_on_battery">Run on Battery</string>
+    <string name="pref_run_on_battery_summary">Continue downloading when unplugged</string>
+    <string name="pref_run_on_cellular">Run on Cellular</string>
+    <string name="pref_run_on_cellular_summary">Continue downloading on mobile data</string>
+    <string name="pref_version">Version</string>
+    <string name="pref_licenses">Open Source Licenses</string>
+</resources>
