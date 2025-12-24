@@ -16,7 +16,7 @@
         app:logo="@drawable/ic_levin_logo"
         app:logoAdjustViewBounds="true"
         app:title="Levin"
-        app:titleMarginStart="8dp" />
+        app:titleMarginStart="16dp" />
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/nav_host_fragment"
