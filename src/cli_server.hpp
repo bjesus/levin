@@ -6,7 +6,7 @@
 
 namespace levin {
 
-class Config;
+struct Config;
 class Session;
 class Statistics;
 class PieceManager;

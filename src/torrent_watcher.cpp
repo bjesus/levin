@@ -2,13 +2,15 @@
 #include "config.hpp"
 #include "logger.hpp"
 #include "utils.hpp"
-#include <sys/inotify.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <cstring>
 
+#ifdef __linux__
+#include <sys/inotify.h>
 #define EVENT_SIZE (sizeof(struct inotify_event))
 #define EVENT_BUF_LEN (1024 * (EVENT_SIZE + 16))
+#endif
 
 namespace levin {
 
@@ -41,6 +43,7 @@ bool TorrentWatcher::start() {
         return false;
     }
 
+#ifdef __linux__
     // Initialize inotify
     inotify_fd_ = inotify_init1(IN_NONBLOCK);
     if (inotify_fd_ < 0) {
@@ -57,6 +60,10 @@ bool TorrentWatcher::start() {
         inotify_fd_ = -1;
         return false;
     }
+#else
+    // On non-Linux platforms, use polling instead of inotify
+    LOG_WARN("File system notifications not available on this platform, using polling");
+#endif
 
     running_ = true;
     LOG_INFO("TorrentWatcher started successfully");
@@ -68,6 +75,7 @@ void TorrentWatcher::stop() {
         LOG_INFO("Stopping TorrentWatcher");
         running_ = false;
 
+#ifdef __linux__
         if (watch_descriptor_ >= 0) {
             inotify_rm_watch(inotify_fd_, watch_descriptor_);
             watch_descriptor_ = -1;
@@ -77,11 +85,17 @@ void TorrentWatcher::stop() {
             close(inotify_fd_);
             inotify_fd_ = -1;
         }
+#endif
     }
 }
 
 void TorrentWatcher::process_events() {
-    if (!running_ || inotify_fd_ < 0) {
+    if (!running_) {
+        return;
+    }
+
+#ifdef __linux__
+    if (inotify_fd_ < 0) {
         return;
     }
 
@@ -130,6 +144,10 @@ void TorrentWatcher::process_events() {
 
         i += EVENT_SIZE + event->len;
     }
+#else
+    // On non-Linux platforms, process_events() is a no-op
+    // The daemon will rely on periodic scanning via scan_existing_torrents()
+#endif
 }
 
 std::vector<std::string> TorrentWatcher::scan_existing_torrents() {

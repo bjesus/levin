@@ -6,7 +6,7 @@
 
 namespace levin {
 
-class Config;
+struct Config;
 
 /**
  * Tracks and persists statistics (session and lifetime).

@@ -5,7 +5,7 @@
 
 namespace levin {
 
-class Config;
+struct Config;
 
 /**
  * Monitors disk space and enforces limits.

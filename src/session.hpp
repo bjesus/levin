@@ -9,7 +9,7 @@
 
 namespace levin {
 
-class Config;
+struct Config;
 
 /**
  * Wrapper around libtorrent::session.

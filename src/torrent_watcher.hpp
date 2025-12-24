@@ -6,7 +6,7 @@
 
 namespace levin {
 
-class Config;
+struct Config;
 
 /**
  * Watches a directory for .torrent files using inotify (Linux).
