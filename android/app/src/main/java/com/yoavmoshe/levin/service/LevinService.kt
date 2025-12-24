@@ -211,7 +211,7 @@ class LevinService : Service() {
         // Check storage limits
         val storageStatus = storageMonitor.getStatus()
         if (storageStatus.isOverBudget) {
-            Log.w(TAG, "Storage budget exceeded: ${storageStatus.usagePercentage}%")
+            Log.w(TAG, "Storage budget exceeded: ${storageStatus.usagePercent}%")
             // TODO: Pause downloads or delete old torrents
         }
         
