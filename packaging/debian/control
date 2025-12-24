@@ -8,9 +8,9 @@ Build-Depends: debhelper-compat (= 13),
                libboost-system-dev (>= 1.70),
                libboost-filesystem-dev (>= 1.70),
                libssl-dev,
-               libspdlog-dev,
                libtorrent-rasterbar-dev (>= 2.0),
-               pkg-config
+               pkg-config,
+               git
 Standards-Version: 4.6.0
 Homepage: https://github.com/bjesus/levin
 Vcs-Git: https://github.com/bjesus/levin.git
