@@ -8,6 +8,7 @@ Build-Depends: debhelper-compat (= 13),
                libboost-system-dev (>= 1.70),
                libboost-filesystem-dev (>= 1.70),
                libssl-dev,
+               libspdlog-dev,
                libtorrent-rasterbar-dev (>= 2.0),
                pkg-config
 Standards-Version: 4.6.0
