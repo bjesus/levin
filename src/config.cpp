@@ -146,6 +146,8 @@ Config Config::load(const std::string& path) {
             config.daemon.pid_file = expand_path(toml::find<std::string>(daemon, "pid_file"));
             config.daemon.log_file = expand_path(toml::find<std::string>(daemon, "log_file"));
             config.daemon.log_level = toml::find<std::string>(daemon, "log_level");
+            config.daemon.run_on_battery = daemon.contains("run_on_battery") ? 
+                toml::find<bool>(daemon, "run_on_battery") : false;
         }
 
         // Load path settings

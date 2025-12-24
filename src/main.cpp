@@ -27,6 +27,9 @@ log_file = "$XDG_STATE_HOME/levin/levin.log"
 # Log level: trace, debug, info, warn, error, critical
 log_level = "info"
 
+# Run on battery power (false = pause when on battery, resume when plugged in)
+run_on_battery = false
+
 [paths]
 # Directory to watch for .torrent files (default: $XDG_CONFIG_HOME/levin/torrents or ~/.config/levin/torrents)
 watch_directory = "$XDG_CONFIG_HOME/levin/torrents"

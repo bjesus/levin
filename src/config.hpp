@@ -15,6 +15,7 @@ struct Config {
         std::string pid_file;
         std::string log_file;
         std::string log_level;
+        bool run_on_battery;
     } daemon;
 
     // Path settings

@@ -26,6 +26,29 @@ find_package(OpenSSL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBTORRENT REQUIRED libtorrent-rasterbar>=2.0)
 
+# Platform-specific dependencies
+set(POWER_MONITOR_AVAILABLE FALSE)
+if(UNIX AND NOT APPLE)
+    # Linux: GLib for DBus/UPower (optional)
+    pkg_check_modules(GLIB gio-2.0)
+    if(GLIB_FOUND)
+        set(POWER_MONITOR_AVAILABLE TRUE)
+        add_compile_definitions(HAVE_POWER_MONITOR)
+        message(STATUS "Power monitoring enabled (GLib found)")
+    else()
+        message(WARNING "GLib not found - power monitoring will be disabled. Install libglib2.0-dev to enable.")
+    endif()
+elseif(APPLE)
+    # macOS: IOKit and CoreFoundation
+    find_library(IOKIT_LIBRARY IOKit)
+    find_library(COREFOUNDATION_LIBRARY CoreFoundation)
+    if(IOKIT_LIBRARY AND COREFOUNDATION_LIBRARY)
+        set(POWER_MONITOR_AVAILABLE TRUE)
+        add_compile_definitions(HAVE_POWER_MONITOR)
+        message(STATUS "Power monitoring enabled (IOKit found)")
+    endif()
+endif()
+
 # Fetch external dependencies
 include(FetchContent)
 
@@ -60,6 +83,7 @@ include_directories(
     ${LIBTORRENT_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
     ${toml11_SOURCE_DIR}
+    ${GLIB_INCLUDE_DIRS}
 )
 
 # Link directories
@@ -81,6 +105,7 @@ set(LEVIN_SOURCES
     src/cli_server.cpp
     src/statistics.cpp
     src/utils.cpp
+    src/power_monitor.cpp
 )
 
 # Unified levin executable (daemon + CLI client)
@@ -94,6 +119,14 @@ target_link_libraries(levin
     spdlog::spdlog
     nlohmann_json::nlohmann_json
 )
+
+# Platform-specific linking
+if(UNIX AND NOT APPLE)
+    target_link_libraries(levin ${GLIB_LIBRARIES})
+    target_link_directories(levin PRIVATE ${GLIB_LIBRARY_DIRS})
+elseif(APPLE)
+    target_link_libraries(levin ${IOKIT_LIBRARY} ${COREFOUNDATION_LIBRARY})
+endif()
 
 # CLI client is now integrated into main binary
 # add_subdirectory(cli)
