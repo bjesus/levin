@@ -12,6 +12,10 @@ import com.yoavmoshe.levin.data.LevinSettings
 import com.yoavmoshe.levin.data.SettingsRepository
 import com.yoavmoshe.levin.data.Statistics
 import com.yoavmoshe.levin.data.StatisticsRepository
+import com.yoavmoshe.levin.monitoring.NetworkMonitor
+import com.yoavmoshe.levin.monitoring.PowerMonitor
+import com.yoavmoshe.levin.monitoring.StorageMonitor
+import com.yoavmoshe.levin.monitoring.TorrentWatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -38,6 +42,12 @@ class LevinService : Service() {
     private lateinit var statsRepo: StatisticsRepository
     private lateinit var sessionManager: LevinSessionManager
     private lateinit var notificationHelper: NotificationHelper
+    
+    // Monitoring components
+    private lateinit var powerMonitor: PowerMonitor
+    private lateinit var networkMonitor: NetworkMonitor
+    private lateinit var storageMonitor: StorageMonitor
+    private lateinit var torrentWatcher: TorrentWatcher
     
     // Current stats
     private var currentStats = Statistics()
@@ -66,6 +76,14 @@ class LevinService : Service() {
         
         // Initialize session manager
         sessionManager = LevinSessionManager(this, settings)
+        
+        // Initialize monitors
+        powerMonitor = PowerMonitor(this)
+        networkMonitor = NetworkMonitor(this)
+        storageMonitor = StorageMonitor(settings)
+        torrentWatcher = TorrentWatcher(settings.watchDirectory) { file ->
+            sessionManager.addTorrent(file)
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -106,9 +124,21 @@ class LevinService : Service() {
         // Scan for existing torrents and add them
         scanAndAddTorrents()
         
-        // TODO: Start file watcher for new torrents
-        // TODO: Start power monitor
-        // TODO: Start network monitor
+        // Start power monitor
+        powerMonitor.start { isCharging ->
+            onPowerStateChanged(isCharging)
+        }
+        
+        // Start network monitor
+        networkMonitor.start { isWifi, isCellular ->
+            onNetworkTypeChanged(isWifi, isCellular)
+        }
+        
+        // Start file watcher
+        torrentWatcher.start()
+        
+        // Log initial storage status
+        storageMonitor.logStatus()
         
         // Start periodic updates (stats + notification)
         startPeriodicUpdates()
@@ -120,6 +150,11 @@ class LevinService : Service() {
         Log.i(TAG, "Stopping service")
         
         isRunning = false
+        
+        // Stop monitors
+        powerMonitor.stop()
+        networkMonitor.stop()
+        torrentWatcher.stop()
         
         // Save session stats to lifetime
         statsRepo.saveSession(currentStats)
@@ -145,19 +180,9 @@ class LevinService : Service() {
     }
     
     private fun scanAndAddTorrents() {
-        val watchDir = settings.watchDirectory
-        if (!watchDir.exists()) {
-            Log.w(TAG, "Watch directory doesn't exist: ${watchDir.absolutePath}")
-            return
-        }
-        
-        val torrentFiles = watchDir.listFiles { file ->
-            file.isFile && file.extension.equals("torrent", ignoreCase = true)
-        } ?: emptyArray()
-        
-        Log.i(TAG, "Found ${torrentFiles.size} existing torrent files")
-        
-        torrentFiles.forEach { file ->
+        val existingTorrents = torrentWatcher.scanExisting()
+        Log.i(TAG, "Found ${existingTorrents.size} existing torrent files")
+        existingTorrents.forEach { file ->
             sessionManager.addTorrent(file)
         }
     }
@@ -183,6 +208,13 @@ class LevinService : Service() {
     private fun updateStats() {
         val sessionStats = sessionManager.getStats()
         
+        // Check storage limits
+        val storageStatus = storageMonitor.getStatus()
+        if (storageStatus.isOverBudget) {
+            Log.w(TAG, "Storage budget exceeded: ${storageStatus.usagePercentage}%")
+            // TODO: Pause downloads or delete old torrents
+        }
+        
         // Update current stats
         currentStats = currentStats.updateSession(
             downloaded = sessionStats.totalDownloaded,
@@ -204,6 +236,26 @@ class LevinService : Service() {
         val notification = buildNotification()
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager?.notify(NotificationHelper.NOTIFICATION_ID, notification)
+    }
+    
+    private fun onPowerStateChanged(isCharging: Boolean) {
+        if (!settings.runOnBattery && !isCharging) {
+            Log.i(TAG, "On battery - pausing downloads")
+            handlePause()
+        } else if (isCharging && sessionManager.isPaused) {
+            Log.i(TAG, "On AC power - resuming downloads")
+            handleResume()
+        }
+    }
+    
+    private fun onNetworkTypeChanged(isWifi: Boolean, isCellular: Boolean) {
+        if (!settings.runOnCellular && isCellular) {
+            Log.i(TAG, "On cellular - pausing downloads")
+            handlePause()
+        } else if (isWifi && sessionManager.isPaused) {
+            Log.i(TAG, "On WiFi - resuming downloads")
+            handleResume()
+        }
     }
     
     private fun buildNotification(): Notification {
