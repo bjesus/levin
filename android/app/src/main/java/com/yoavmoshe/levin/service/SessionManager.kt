@@ -101,13 +101,11 @@ class LevinSessionManager(
             }
             
             // Add torrent to session with save path
-            val handle = currentSession.download(ti, settings.dataDirectory)
-            if (handle != null) {
-                torrents[infoHash] = handle
-            } else {
-                Log.e(TAG, "Failed to get torrent handle")
-                return false
-            }
+            currentSession.download(ti, settings.dataDirectory)
+            
+            // Find the torrent handle by info hash
+            val handle = currentSession.find(ti.infoHash())
+            torrents[infoHash] = handle
             
             Log.i(TAG, "Torrent added successfully: ${torrentFile.name}")
             true
