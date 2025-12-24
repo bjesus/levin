@@ -50,6 +50,6 @@ tests/test_*
 # Statistics
 statistics.json
 
-# Torrent data
-data/
-torrents/
+# Torrent data (desktop only - exclude from root)
+/data/
+/torrents/
