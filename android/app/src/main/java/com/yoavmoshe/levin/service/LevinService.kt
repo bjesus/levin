@@ -55,6 +55,7 @@ class LevinService : Service() {
     
     // State
     private var isRunning = false
+    private var updateCounter = 0  // Counter for periodic lifetime saves
     
     override fun onCreate() {
         super.onCreate()
@@ -234,8 +235,19 @@ class LevinService : Service() {
             paused = sessionManager.isPaused
         )
         
-        // Save to repository (every update - StatisticsRepository handles throttling if needed)
+        // Save to repository every update
         statsRepo.save(currentStats)
+        
+        // Also save session to lifetime periodically (every 30 seconds)
+        // This ensures stats persist even if app is force-killed
+        updateCounter++
+        if (updateCounter >= 30) {
+            Log.d(TAG, "Periodic lifetime save (session -> lifetime)")
+            statsRepo.saveSession(currentStats)
+            // Reload to get updated lifetime values
+            currentStats = statsRepo.load()
+            updateCounter = 0
+        }
     }
     
     private fun updateNotification() {

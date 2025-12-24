@@ -38,6 +38,18 @@ data class Statistics(
         get() = (lifetimeUptimeMs + sessionUptime.inWholeMilliseconds).milliseconds
     
     /**
+     * Total downloaded (lifetime + current session)
+     */
+    val totalDownloaded: Long
+        get() = lifetimeDownloaded + sessionDownloaded
+    
+    /**
+     * Total uploaded (lifetime + current session)
+     */
+    val totalUploaded: Long
+        get() = lifetimeUploaded + sessionUploaded
+    
+    /**
      * Session ratio (uploaded / downloaded)
      */
     val sessionRatio: Double
@@ -48,17 +60,13 @@ data class Statistics(
         }
     
     /**
-     * Lifetime ratio
+     * Lifetime ratio (total uploaded / total downloaded)
      */
     val lifetimeRatio: Double
-        get() {
-            val totalDownloaded = lifetimeDownloaded + sessionDownloaded
-            val totalUploaded = lifetimeUploaded + sessionUploaded
-            return if (totalDownloaded > 0) {
-                totalUploaded.toDouble() / totalDownloaded.toDouble()
-            } else {
-                0.0
-            }
+        get() = if (totalDownloaded > 0) {
+            totalUploaded.toDouble() / totalDownloaded.toDouble()
+        } else {
+            0.0
         }
     
     /**

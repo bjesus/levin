@@ -126,14 +126,12 @@ class StatsFragment : Fragment() {
         downloaded.text = FormatUtils.formatSize(stats.sessionDownloaded)
         uploaded.text = FormatUtils.formatSize(stats.sessionUploaded)
         
-        // Lifetime stats (combined table)
-        lifetimeDownloaded.text = FormatUtils.formatSize(stats.lifetimeDownloaded)
-        lifetimeUploaded.text = FormatUtils.formatSize(stats.lifetimeUploaded)
+        // Lifetime stats (combined table) - shows TOTAL (lifetime + session)
+        lifetimeDownloaded.text = FormatUtils.formatSize(stats.totalDownloaded)
+        lifetimeUploaded.text = FormatUtils.formatSize(stats.totalUploaded)
         
-        // Session ratio
+        // Ratios
         sessionRatio.text = FormatUtils.formatRatio(stats.sessionRatio)
-        
-        // Lifetime ratio
         ratio.text = FormatUtils.formatRatio(stats.lifetimeRatio)
     }
 }
