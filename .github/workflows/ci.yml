@@ -58,6 +58,33 @@ jobs:
           ./build/levin --version
           ./build/levin --help
 
+      - name: Prepare artifact
+        if: matrix.build_type == 'Release'
+        run: |
+          mkdir -p artifact
+          cp build/levin artifact/
+          # Strip debug symbols for smaller size
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            strip artifact/levin
+          elif [ "${{ runner.os }}" = "macOS" ]; then
+            strip -x artifact/levin
+          fi
+          # Add version info
+          echo "$(./build/levin --version)" > artifact/VERSION.txt
+          echo "OS: ${{ matrix.os }}" >> artifact/VERSION.txt
+          echo "Build Type: ${{ matrix.build_type }}" >> artifact/VERSION.txt
+          echo "Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> artifact/VERSION.txt
+          echo "Commit: ${{ github.sha }}" >> artifact/VERSION.txt
+
+      - name: Upload binary artifact
+        if: matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-${{ matrix.os }}-${{ matrix.build_type }}
+          path: artifact/
+          retention-days: 30
+          if-no-files-found: error
+
   code-quality:
     name: Code Quality Checks
     runs-on: ubuntu-latest
