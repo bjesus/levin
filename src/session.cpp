@@ -261,6 +261,31 @@ void Session::get_stats(uint64_t& downloaded, uint64_t& uploaded, int& num_peers
     }
 }
 
+void Session::get_stats_with_rates(uint64_t& downloaded, uint64_t& uploaded, int& num_peers,
+                                    int& download_rate, int& upload_rate) {
+    downloaded = 0;
+    uploaded = 0;
+    num_peers = 0;
+    download_rate = 0;
+    upload_rate = 0;
+
+    if (!session_) {
+        return;
+    }
+
+    auto torrents = session_->get_torrents();
+    for (const auto& handle : torrents) {
+        if (!handle.is_valid()) continue;
+        
+        lt::torrent_status status = handle.status();
+        downloaded += status.all_time_download;
+        uploaded += status.all_time_upload;
+        num_peers += status.num_peers;
+        download_rate += status.download_rate;
+        upload_rate += status.upload_rate;
+    }
+}
+
 std::vector<lt::torrent_handle> Session::get_torrents() {
     std::vector<lt::torrent_handle> handles;
     if (session_) {

@@ -59,7 +59,8 @@ DiskMonitor::SpaceStatus DiskMonitor::check_space() {
     status.current_usage_bytes = current_usage_bytes_;
     
     // Additional check: are we using more than our budget?
-    if (current_usage_bytes_ > status.budget_bytes) {
+    // Only flag as over budget if we're actually using space
+    if (current_usage_bytes_ > 0 && current_usage_bytes_ > status.budget_bytes) {
         status.over_budget = true;
         status.deficit_bytes = current_usage_bytes_ - status.budget_bytes;
     }

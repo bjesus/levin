@@ -165,8 +165,8 @@ json CLIServer::handle_status() {
     const auto& metrics = piece_manager_.get_metrics();
 
     uint64_t downloaded, uploaded;
-    int peers;
-    session_.get_stats(downloaded, uploaded, peers);
+    int peers, download_rate, upload_rate;
+    session_.get_stats_with_rates(downloaded, uploaded, peers, download_rate, upload_rate);
 
     int total_pieces = 0, pieces_we_have = 0;
     for (const auto& [hash, m] : metrics) {
@@ -177,7 +177,6 @@ json CLIServer::handle_status() {
     return {
         {"success", true},
         {"data", {
-            {"uptime_seconds", statistics_.get_session_uptime_seconds()},
             {"disk", {
                 {"total_bytes", space_status.total_bytes},
                 {"free_bytes", space_status.free_bytes},
@@ -192,11 +191,18 @@ json CLIServer::handle_status() {
                 {"pieces_we_have", pieces_we_have}
             }},
             {"network", {
-                {"download_rate", 0},  // TODO: Calculate rate
-                {"upload_rate", 0},
-                {"total_downloaded", downloaded},
-                {"total_uploaded", uploaded},
+                {"session_downloaded", static_cast<uint64_t>(downloaded)},
+                {"session_uploaded", static_cast<uint64_t>(uploaded)},
+                {"lifetime_downloaded", static_cast<uint64_t>(stats.lifetime_downloaded_bytes)},
+                {"lifetime_uploaded", static_cast<uint64_t>(stats.lifetime_uploaded_bytes)},
+                {"download_rate", download_rate},
+                {"upload_rate", upload_rate},
                 {"peers_connected", peers}
+            }},
+            {"uptime", {
+                {"session_seconds", statistics_.get_session_uptime_seconds()},
+                {"lifetime_seconds", stats.lifetime_uptime_seconds},
+                {"session_count", stats.lifetime_session_count}
             }}
         }}
     };

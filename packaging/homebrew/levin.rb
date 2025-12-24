@@ -34,7 +34,7 @@ class Levin < Formula
         <string>#{plist_name}</string>
         <key>ProgramArguments</key>
         <array>
-          <string>#{opt_bin}/levind</string>
+          <string>#{opt_bin}/levin</string>
           <string>--config</string>
           <string>#{Dir.home}/.config/levin/levin.toml</string>
           <string>--foreground</string>
@@ -57,12 +57,12 @@ class Levin < Formula
       Levin has been installed successfully!
 
       To get started:
-        1. Run 'levind' once to create default configuration
+        1. Run 'levin' once to create default configuration
         2. Edit ~/.config/levin/levin.toml to customize settings
         3. Start the service: brew services start levin
         
       To run manually:
-        levind --config ~/.config/levin/levin.toml --foreground
+        levin --config ~/.config/levin/levin.toml --foreground
 
       For more information, visit: https://github.com/bjesus/levin
     EOS
@@ -70,7 +70,7 @@ class Levin < Formula
 
   test do
     # Test version flag
-    assert_match "Levin v#{version}", shell_output("#{bin}/levind --version")
+    assert_match "Levin v#{version}", shell_output("#{bin}/levin --version")
     assert_match "Levin v#{version}", shell_output("#{bin}/levin --version")
   end
 end

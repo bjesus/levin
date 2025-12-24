@@ -67,9 +67,10 @@ link_directories(
     ${LIBTORRENT_LIBRARY_DIRS}
 )
 
-# Daemon source files
-set(DAEMON_SOURCES
+# Unified binary source files (includes both daemon and CLI client)
+set(LEVIN_SOURCES
     src/main.cpp
+    src/cli_client.cpp
     src/config.cpp
     src/logger.cpp
     src/daemon.cpp
@@ -82,10 +83,10 @@ set(DAEMON_SOURCES
     src/utils.cpp
 )
 
-# Daemon executable
-add_executable(levind ${DAEMON_SOURCES})
+# Unified levin executable (daemon + CLI client)
+add_executable(levin ${LEVIN_SOURCES})
 
-target_link_libraries(levind
+target_link_libraries(levin
     ${Boost_LIBRARIES}
     ${LIBTORRENT_LIBRARIES}
     ${OPENSSL_LIBRARIES}
@@ -94,8 +95,8 @@ target_link_libraries(levind
     nlohmann_json::nlohmann_json
 )
 
-# CLI client
-add_subdirectory(cli)
+# CLI client is now integrated into main binary
+# add_subdirectory(cli)
 
 # Tests (optional)
 option(BUILD_TESTS "Build tests" ON)
@@ -105,7 +106,7 @@ if(BUILD_TESTS)
 endif()
 
 # Install targets
-install(TARGETS levind
+install(TARGETS levin
     RUNTIME DESTINATION bin
 )
 
@@ -116,8 +117,8 @@ install(FILES scripts/levin.service
 
 # Print configuration summary
 message(STATUS "")
-message(STATUS "Archiver Configuration Summary")
-message(STATUS "==============================")
+message(STATUS "Levin Configuration Summary")
+message(STATUS "===========================")
 message(STATUS "Version: ${PROJECT_VERSION}")
 message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C++ Standard: C++${CMAKE_CXX_STANDARD}")

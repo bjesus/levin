@@ -51,15 +51,17 @@ wget https://github.com/bjesus/levin/releases/download/v0.1.0/levin_0.1.0_ubuntu
 sudo dpkg -i levin_0.1.0_ubuntu-22.04_amd64.deb
 sudo apt-get install -f  # Install dependencies if needed
 
-# First run creates default config
-levind
+# Start the daemon (creates default config automatically)
+levin start
 
-# Edit configuration
-nano ~/.config/levin/levin.toml
+# Or start in foreground to see output
+levin start --foreground
 
-# Enable and start the service
+# Check status
+levin status
+
+# Enable automatic start on login
 systemctl --user enable levin
-systemctl --user start levin
 ```
 
 ### Fedora/RHEL
@@ -71,15 +73,17 @@ wget https://github.com/bjesus/levin/releases/download/v0.1.0/levin-0.1.0-fedora
 # Install the package
 sudo dnf install levin-0.1.0-fedora40.x86_64.rpm
 
-# First run creates default config
-levind
+# Start the daemon (creates default config automatically)
+levin start
 
-# Edit configuration
-nano ~/.config/levin/levin.toml
+# Or start in foreground to see output
+levin start --foreground
 
-# Enable and start the service
+# Check status
+levin status
+
+# Enable automatic start on login
 systemctl --user enable levin
-systemctl --user start levin
 ```
 
 ### Arch Linux (AUR)
@@ -90,15 +94,17 @@ yay -S levin
 # or
 paru -S levin
 
-# First run creates default config
-levind
+# Start the daemon (creates default config automatically)
+levin start
 
-# Edit configuration
-nano ~/.config/levin/levin.toml
+# Or start in foreground to see output
+levin start --foreground
 
-# Enable and start the service
+# Check status
+levin status
+
+# Enable automatic start on login
 systemctl --user enable levin
-systemctl --user start levin
 ```
 
 ### macOS (Homebrew)
@@ -111,7 +117,7 @@ brew tap bjesus/levin
 brew install levin
 
 # First run creates default config
-levind
+levin
 
 # Edit configuration
 nano ~/.config/levin/levin.toml
@@ -142,15 +148,17 @@ make -j$(nproc)
 # Install binaries and service file
 sudo make install
 
-# First run creates default config
-levind
+# Start the daemon (creates default config automatically)
+levin start
 
-# Edit configuration
-nano ~/.config/levin/levin.toml
+# Or start in foreground to see output
+levin start --foreground
 
-# Enable and start the service
+# Check status
+levin status
+
+# Enable automatic start on login
 systemctl --user enable levin
-systemctl --user start levin
 ```
 
 ## Configuration
@@ -171,7 +179,7 @@ session_state = "$XDG_STATE_HOME/levin/session.state"  # ~/.local/state/levin/se
 statistics_file = "$XDG_STATE_HOME/levin/statistics.json"  # ~/.local/state/levin/statistics.json
 
 [disk]
-min_free_bytes = 1073741824      # 1GB
+min_free_space = "1gb"           # Human-readable: "100mb", "5gb", "1tb" or bytes
 min_free_percentage = 0.05       # 5%
 check_interval_seconds = 60
 
@@ -247,13 +255,16 @@ brew services stop levin
 
 ```bash
 # Start in foreground (for testing)
-levind --foreground
+levin start --foreground
 
 # With custom config
-levind --config /path/to/config.toml --foreground
+levin start --config /path/to/config.toml --foreground
 
 # Check version
-levind --version
+levin --version
+
+# Stop the daemon
+levin terminate
 ```
 
 ### Monitor Status
@@ -301,7 +312,7 @@ levin bandwidth
 ### Disk Space Management
 
 Levin strictly enforces disk space limits:
-- **Minimum Free Space**: `max(min_free_bytes, min_free_percentage × total_disk_space)`
+- **Minimum Free Space**: `max(min_free_space, min_free_percentage × total_disk_space)`
 - **Budget**: Amount of space available for torrent data = `free_space - min_free_space`
 - **Emergency Mode**: Triggered when current usage exceeds budget by >100MB
   - All downloads are immediately paused
@@ -318,8 +329,9 @@ Levin strictly enforces disk space limits:
 | `levin pause` | Pause all torrent activity |
 | `levin resume` | Resume torrent activity |
 | `levin bandwidth` | View or set bandwidth limits |
-| `levind --version` | Show version information |
+| `levin terminate` | Stop the daemon gracefully |
 | `levin --version` | Show version information |
+| `levin --help` | Show help message |
 
 ## Testing
 
@@ -356,8 +368,7 @@ Levin/
 │   ├── disk_monitor.cpp    # Disk space management
 │   ├── statistics.cpp      # JSON persistence for stats
 │   └── cli_server.cpp      # Unix socket server (291 lines)
-├── cli/                    # CLI client source code (329 lines)
-│   └── cli_main.cpp        # CLI tool
+├── cli_client.cpp         # CLI client functionality (integrated)
 ├── config/            # Example configuration files
 ├── scripts/           # Installation and service scripts
 │   ├── Levin.service   # systemd unit file
@@ -378,7 +389,7 @@ make -j$(nproc)
 ctest
 
 # Memory leak detection
-valgrind --leak-check=full ./Levind --config ../config/Levin.toml.example
+valgrind --leak-check=full ./levin start --config ../config/levin.toml.example --foreground
 ```
 
 ### Key Files

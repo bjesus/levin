@@ -15,10 +15,21 @@ Statistics::Statistics(const Config& config)
     , last_reported_download_(0)
     , last_reported_upload_(0) {
     
+    // Initialize all stats to zero
+    stats_.lifetime_downloaded_bytes = 0;
+    stats_.lifetime_uploaded_bytes = 0;
+    stats_.lifetime_uptime_seconds = 0;
+    stats_.lifetime_session_count = 0;
+    stats_.session_downloaded_bytes = 0;
+    stats_.session_uploaded_bytes = 0;
+    stats_.torrents_loaded = 0;
+    stats_.pieces_have = 0;
+    stats_.pieces_total = 0;
+    stats_.peers_connected = 0;
+    
     // Initialize session start time
     stats_.session_start_time = std::chrono::system_clock::now();
     stats_.first_start_time = stats_.session_start_time;
-    stats_.lifetime_session_count = 0;
     
     LOG_INFO("Statistics initialized, file: {}", stats_file_);
 }

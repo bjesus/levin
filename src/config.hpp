@@ -6,7 +6,7 @@
 namespace levin {
 
 /**
- * Configuration structure for the Archiver daemon.
+ * Configuration structure for the Levin daemon.
  * Loads settings from TOML configuration file.
  */
 struct Config {

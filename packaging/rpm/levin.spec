@@ -45,7 +45,7 @@ echo ""
 echo "Levin has been installed successfully!"
 echo ""
 echo "To get started:"
-echo "  1. Run 'levind' once to create default configuration"
+echo "  1. Run 'levin' once to create default configuration"
 echo "  2. Edit ~/.config/levin/levin.toml to customize settings"
 echo "  3. Enable the service: systemctl --user enable levin"
 echo "  4. Start the service: systemctl --user start levin"
@@ -63,7 +63,7 @@ fi
 %files
 %license LICENSE
 %doc README.md
-%{_bindir}/levind
+%{_bindir}/levin
 %{_bindir}/levin
 %{_userunitdir}/levin.service
 

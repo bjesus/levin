@@ -7,7 +7,7 @@ case "$1" in
         echo "Levin has been installed successfully!"
         echo ""
         echo "To get started:"
-        echo "  1. Run 'levind' once to create default configuration"
+        echo "  1. Run 'levin' once to create default configuration"
         echo "  2. Edit ~/.config/levin/levin.toml to customize settings"
         echo "  3. Enable the service: systemctl --user enable levin"
         echo "  4. Start the service: systemctl --user start levin"

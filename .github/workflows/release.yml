@@ -123,8 +123,7 @@ jobs:
       - name: Create tarball
         run: |
           mkdir -p dist/levin-${{ github.ref_name }}-macos/bin
-          cp build/levind dist/levin-${{ github.ref_name }}-macos/bin/
-          cp build/cli/levin dist/levin-${{ github.ref_name }}-macos/bin/
+          cp build/levin dist/levin-${{ github.ref_name }}-macos/bin/
           cp LICENSE dist/levin-${{ github.ref_name }}-macos/
           cp README.md dist/levin-${{ github.ref_name }}-macos/
           cd dist
@@ -200,10 +199,11 @@ jobs:
           
           ### Getting Started
           
-          1. Run `levind` once to create default configuration
-          2. Edit `~/.config/levin/levin.toml` to customize settings
-          3. Enable the service: `systemctl --user enable levin` (Linux) or `brew services start levin` (macOS)
-          4. Start the service: `systemctl --user start levin` (Linux)
+          1. Start the daemon: `levin start` (creates config automatically on first run)
+          2. Check status: `levin status`
+          3. Enable automatic start: `systemctl --user enable levin` (Linux) or `brew services start levin` (macOS)
+          
+          See `levin --help` for all commands.
           
           ### What's New
           

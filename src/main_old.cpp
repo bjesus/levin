@@ -2,13 +2,11 @@
 #include "logger.hpp"
 #include "daemon.hpp"
 #include "utils.hpp"
-#include "cli_client.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <getopt.h>
 #include <filesystem>
 #include <fstream>
-#include <cstring>
 
 using namespace levin;
 
@@ -41,8 +39,8 @@ session_state = "$XDG_STATE_HOME/levin/session.state"
 statistics_file = "$XDG_STATE_HOME/levin/statistics.json"
 
 [disk]
-# Minimum free space (supports: "100mb", "5gb", "1tb" or raw bytes)
-min_free_space = "1gb"
+# Minimum free space in bytes (1 GB)
+min_free_bytes = 1073741824
 
 # Minimum free space as percentage (0.05 = 5%)
 min_free_percentage = 0.05
@@ -145,51 +143,38 @@ bool create_default_config() {
     
     std::cout << "Created default configuration at: " << config_path << "\n\n"
               << "Please review and customize the configuration, then start the daemon:\n"
-              << "  levin start\n"
+              << "  systemctl --user enable levin\n"
+              << "  systemctl --user start levin\n"
               << std::endl;
     
     return true;
 }
 
-void print_usage() {
-    std::cout << "Usage: levin COMMAND [OPTIONS]\n\n"
-              << "Commands:\n"
-              << "  start [OPTIONS]       Start the daemon\n"
-              << "    -c, --config FILE   Configuration file path\n"
-              << "    -f, --foreground    Run in foreground (don't daemonize)\n"
-              << "  status                Show daemon status and statistics\n"
-              << "  stats                 Same as status\n"
-              << "  list                  List all loaded torrents\n"
-              << "  pause                 Pause all torrent activity\n"
-              << "  resume                Resume torrent activity\n"
-              << "  bandwidth             Show current bandwidth limits\n"
-              << "  bandwidth --download KBPS   Set download limit (0 = unlimited)\n"
-              << "  bandwidth --upload KBPS     Set upload limit (0 = unlimited)\n"
-              << "  terminate             Stop the daemon\n"
-              << "\n"
-              << "Global options:\n"
-              << "  --socket PATH         Path to control socket (default: $XDG_STATE_HOME/levin/levin.sock)\n"
-              << "  --version             Show version information\n"
-              << "  --help                Show this help message\n"
+void print_usage(const char* program_name) {
+    std::cout << "Usage: " << program_name << " [OPTIONS]\n\n"
+              << "Options:\n"
+              << "  -c, --config FILE    Configuration file path (default: ~/.config/levin/levin.toml)\n"
+              << "  -f, --foreground     Run in foreground (don't daemonize)\n"
+              << "  -v, --version        Show version information\n"
+              << "  -h, --help           Show this help message\n"
               << std::endl;
 }
 
-int run_daemon(int argc, char** argv) {
+int main(int argc, char** argv) {
     std::string config_file;
     bool foreground = false;
 
-    // Parse command line arguments for daemon mode
-    // Skip first arg which is "start"
-    optind = 0;  // Reset getopt
+    // Parse command line arguments
     static struct option long_options[] = {
         {"config",     required_argument, 0, 'c'},
         {"foreground", no_argument,       0, 'f'},
+        {"version",    no_argument,       0, 'v'},
         {"help",       no_argument,       0, 'h'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "c:fh", long_options, nullptr)) != -1) {
+    while ((opt = getopt_long(argc, argv, "c:fvh", long_options, nullptr)) != -1) {
         switch (opt) {
             case 'c':
                 config_file = optarg;
@@ -197,11 +182,14 @@ int run_daemon(int argc, char** argv) {
             case 'f':
                 foreground = true;
                 break;
+            case 'v':
+                std::cout << "Levin v" << PROJECT_VERSION << std::endl;
+                return EXIT_SUCCESS;
             case 'h':
-                print_usage();
+                print_usage(argv[0]);
                 return EXIT_SUCCESS;
             default:
-                print_usage();
+                print_usage(argv[0]);
                 return EXIT_FAILURE;
         }
     }
@@ -260,36 +248,5 @@ int run_daemon(int argc, char** argv) {
         LOG_CRITICAL("Fatal error: {}", e.what());
         Logger::shutdown();
         return EXIT_FAILURE;
-    }
-}
-
-int main(int argc, char** argv) {
-    // Check if there are no arguments or if first arg is a flag
-    if (argc < 2 || argv[1][0] == '-') {
-        // Check for global flags
-        for (int i = 1; i < argc; i++) {
-            if (strcmp(argv[i], "--version") == 0 || strcmp(argv[i], "-v") == 0) {
-                std::cout << "Levin v" << PROJECT_VERSION << std::endl;
-                return EXIT_SUCCESS;
-            } else if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
-                print_usage();
-                return EXIT_SUCCESS;
-            }
-        }
-        
-        // No valid command
-        print_usage();
-        return EXIT_FAILURE;
-    }
-
-    std::string command = argv[1];
-    
-    // Dispatch to daemon or client mode
-    if (command == "start") {
-        // Daemon mode - pass remaining args
-        return run_daemon(argc - 1, &argv[1]);
-    } else {
-        // Client mode - pass command and remaining args
-        return cli::run_client(argc - 1, &argv[1]);
     }
 }

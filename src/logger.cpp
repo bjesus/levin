@@ -17,7 +17,7 @@ void Logger::init(const std::string& log_file,
             log_file, max_size, max_files);
 
         // Create logger
-        logger_ = std::make_shared<spdlog::logger>("archiver", file_sink);
+        logger_ = std::make_shared<spdlog::logger>("levin", file_sink);
 
         // Set log level
         if (log_level == "trace") {

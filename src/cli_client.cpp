@@ -1,3 +1,4 @@
+#include "cli_client.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 #include <string>
@@ -6,11 +7,14 @@
 #include <unistd.h>
 #include <cstring>
 #include <iomanip>
+#include <sstream>
 
 using json = nlohmann::json;
 
-// Default socket path - will try to read from config
-std::string get_default_socket_path() {
+namespace levin {
+namespace cli {
+
+static std::string get_default_socket_path() {
     // Try XDG_STATE_HOME first
     const char* state_home = std::getenv("XDG_STATE_HOME");
     if (state_home) {
@@ -27,7 +31,7 @@ std::string get_default_socket_path() {
     return "/tmp/levin.sock";
 }
 
-std::string send_command(const std::string& socket_path, const json& request) {
+static std::string send_command(const std::string& socket_path, const json& request) {
     int sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) {
         throw std::runtime_error("Failed to create socket");
@@ -60,7 +64,7 @@ std::string send_command(const std::string& socket_path, const json& request) {
     return std::string(buffer);
 }
 
-std::string format_bytes(uint64_t bytes) {
+static std::string format_bytes(uint64_t bytes) {
     const char* units[] = {"B", "KB", "MB", "GB", "TB"};
     int unit = 0;
     double size = static_cast<double>(bytes);
@@ -75,7 +79,26 @@ std::string format_bytes(uint64_t bytes) {
     return oss.str();
 }
 
-std::string format_duration(uint64_t seconds) {
+static std::string format_rate(int bytes_per_second) {
+    if (bytes_per_second == 0) {
+        return "0 B/s";
+    }
+    
+    const char* units[] = {"B/s", "KB/s", "MB/s", "GB/s"};
+    int unit = 0;
+    double rate = static_cast<double>(bytes_per_second);
+
+    while (rate >= 1024.0 && unit < 3) {
+        rate /= 1024.0;
+        unit++;
+    }
+
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << rate << " " << units[unit];
+    return oss.str();
+}
+
+static std::string format_duration(uint64_t seconds) {
     if (seconds < 60) {
         return std::to_string(seconds) + "s";
     }
@@ -93,61 +116,86 @@ std::string format_duration(uint64_t seconds) {
     return std::to_string(days) + "d " + std::to_string(hours) + "h";
 }
 
-void print_status(const json& data) {
-    std::cout << "\n=== Levin Status ===\n\n";
-
-    // Uptime
-    uint64_t uptime = data["uptime_seconds"];
-    std::cout << "Uptime: " << format_duration(uptime) << "\n\n";
-
-    // Disk
+static void print_status(const json& data) {
+    // Status line
     auto disk = data["disk"];
-    std::cout << "Disk Usage:\n";
-    std::cout << "  Total:    " << format_bytes(disk["total_bytes"]) << "\n";
-    std::cout << "  Free:     " << format_bytes(disk["free_bytes"]) << "\n";
-    std::cout << "  Used:     " << format_bytes(disk["used_bytes"]) << "\n";
-    std::cout << "  Min Free: " << format_bytes(disk["min_required_bytes"]) << "\n";
-    std::cout << "  Budget:   " << format_bytes(disk["budget_bytes"]) << "\n";
-    
     bool over_budget = disk["over_budget"];
     uint64_t total = disk["total_bytes"];
     
-    // If total is 0, it means we couldn't get filesystem stats
+    std::cout << "Status: ";
     if (total == 0) {
-        std::cout << "  Status:   ? Unable to read filesystem\n";
+        std::cout << "Unable to read filesystem\n";
     } else if (over_budget) {
-        std::cout << "  Status:   ⚠ OVER BUDGET\n";
+        std::cout << "⚠ OVER BUDGET\n";
     } else {
-        std::cout << "  Status:   ✓ OK\n";
+        std::cout << "Running\n";
     }
+    std::cout << "\n";
+
+    // Disk
+    std::cout << "Disk:\n";
+    std::cout << "  Total:        " << format_bytes(disk["total_bytes"]) << "\n";
+    std::cout << "  Free:         " << format_bytes(disk["free_bytes"]) << "\n";
+    std::cout << "  Torrent Data: " << format_bytes(disk["used_bytes"]) << "\n";
+    std::cout << "  Budget:       " << format_bytes(disk["budget_bytes"]) << "\n";
     std::cout << "\n";
 
     // Torrents
     auto torrents = data["torrents"];
     std::cout << "Torrents:\n";
-    std::cout << "  Loaded:        " << torrents["total_loaded"] << "\n";
-    std::cout << "  Total Pieces:  " << torrents["total_pieces"] << "\n";
-    std::cout << "  Pieces We Have: " << torrents["pieces_we_have"] << "\n";
+    std::cout << "  Loaded:       " << torrents["total_loaded"] << "\n";
+    std::cout << "  Total Pieces: " << torrents["total_pieces"] << "\n";
+    std::cout << "  We Have:      " << torrents["pieces_we_have"];
     
     if (torrents["total_pieces"].get<int>() > 0) {
         double percent = 100.0 * torrents["pieces_we_have"].get<int>() / torrents["total_pieces"].get<int>();
-        std::cout << "  Completion:    " << std::fixed << std::setprecision(1) << percent << "%\n";
+        std::cout << " (" << std::fixed << std::setprecision(1) << percent << "%)";
     }
-    std::cout << "\n";
+    std::cout << "\n\n";
 
-    // Network
+    // Network with rates and session (lifetime) format
     auto network = data["network"];
+    uint64_t session_down = network["session_downloaded"];
+    uint64_t session_up = network["session_uploaded"];
+    uint64_t lifetime_down = network["lifetime_downloaded"];
+    uint64_t lifetime_up = network["lifetime_uploaded"];
+    int download_rate = network["download_rate"];
+    int upload_rate = network["upload_rate"];
+    
     std::cout << "Network:\n";
-    std::cout << "  Downloaded: " << format_bytes(network["total_downloaded"]) << "\n";
-    std::cout << "  Uploaded:   " << format_bytes(network["total_uploaded"]) << "\n";
-    std::cout << "  Peers:      " << network["peers_connected"] << "\n";
+    std::cout << "  Downloading: " << format_rate(download_rate) << "\n";
+    std::cout << "  Uploading:   " << format_rate(upload_rate) << "\n";
+    std::cout << "  Downloaded:  " << format_bytes(session_down) 
+              << " (" << format_bytes(lifetime_down) << ")\n";
+    std::cout << "  Uploaded:    " << format_bytes(session_up) 
+              << " (" << format_bytes(lifetime_up) << ")\n";
+    
+    // Calculate ratios
+    if (session_down > 0 && session_up > 0) {
+        double sess_ratio = static_cast<double>(session_up) / session_down;
+        double life_ratio = lifetime_down > 0 ? static_cast<double>(lifetime_up) / lifetime_down : 0.0;
+        std::cout << "  Ratio:       " << std::fixed << std::setprecision(2) << sess_ratio 
+                  << " (" << std::fixed << std::setprecision(2) << life_ratio << ")\n";
+    } else if (lifetime_down > 0 && lifetime_up > 0) {
+        double life_ratio = static_cast<double>(lifetime_up) / lifetime_down;
+        std::cout << "  Ratio:       - (" << std::fixed << std::setprecision(2) << life_ratio << ")\n";
+    }
+    
+    std::cout << "  Peers:       " << network["peers_connected"] << "\n";
+    std::cout << "\n";
+    
+    // Uptime
+    auto uptime = data["uptime"];
+    std::cout << "Uptime:  " << format_duration(uptime["session_seconds"]) 
+              << " (" << format_duration(uptime["lifetime_seconds"]) << ")\n";
+    std::cout << "Sessions: " << uptime["session_count"] << " total\n";
     std::cout << "\n";
 }
 
-void print_list(const json& data) {
+static void print_list(const json& data) {
     auto torrents = data["torrents"];
     
-    std::cout << "\n=== Torrent List (" << torrents.size() << " torrents) ===\n\n";
+    std::cout << "Torrents (" << torrents.size() << " loaded):\n\n";
     
     std::cout << std::left 
               << std::setw(12) << "HASH"
@@ -180,49 +228,19 @@ void print_list(const json& data) {
     std::cout << "\n";
 }
 
-void print_stats(const json& data) {
-    std::cout << "\n=== Statistics ===\n\n";
-
-    auto session = data["session"];
-    std::cout << "Session (current):\n";
-    std::cout << "  Downloaded: " << format_bytes(session["downloaded"]) << "\n";
-    std::cout << "  Uploaded:   " << format_bytes(session["uploaded"]) << "\n";
-    std::cout << "  Uptime:     " << format_duration(session["uptime"]) << "\n";
-    
-    if (session["downloaded"].get<uint64_t>() > 0 && session["uploaded"].get<uint64_t>() > 0) {
-        double ratio = static_cast<double>(session["uploaded"].get<uint64_t>()) / session["downloaded"].get<uint64_t>();
-        std::cout << "  Ratio:      " << std::fixed << std::setprecision(2) << ratio << "\n";
-    }
-    std::cout << "\n";
-
-    auto lifetime = data["lifetime"];
-    std::cout << "Lifetime (all sessions):\n";
-    std::cout << "  Downloaded: " << format_bytes(lifetime["downloaded"]) << "\n";
-    std::cout << "  Uploaded:   " << format_bytes(lifetime["uploaded"]) << "\n";
-    std::cout << "  Uptime:     " << format_duration(lifetime["uptime"]) << "\n";
-    std::cout << "  Sessions:   " << lifetime["sessions"] << "\n";
-    
-    if (lifetime["downloaded"].get<uint64_t>() > 0 && lifetime["uploaded"].get<uint64_t>() > 0) {
-        double ratio = static_cast<double>(lifetime["uploaded"].get<uint64_t>()) / lifetime["downloaded"].get<uint64_t>();
-        std::cout << "  Ratio:      " << std::fixed << std::setprecision(2) << ratio << "\n";
-    }
-    std::cout << "\n";
-}
-
-void print_bandwidth(const json& data) {
-    std::cout << "=== Bandwidth Limits ===\n\n";
-    
+static void print_bandwidth(const json& data) {
     int download_kbps = data["download_limit_kbps"].get<int>();
     int upload_kbps = data["upload_limit_kbps"].get<int>();
     
-    std::cout << "Download: ";
+    std::cout << "Bandwidth Limits:\n";
+    std::cout << "  Download: ";
     if (download_kbps == 0) {
         std::cout << "unlimited\n";
     } else {
         std::cout << download_kbps << " KB/s\n";
     }
     
-    std::cout << "Upload:   ";
+    std::cout << "  Upload:   ";
     if (upload_kbps == 0) {
         std::cout << "unlimited\n";
     } else {
@@ -231,40 +249,41 @@ void print_bandwidth(const json& data) {
     std::cout << "\n";
 }
 
-void print_usage(const char* prog) {
-    std::cout << "Usage: " << prog << " [OPTIONS] COMMAND [ARGS]\n\n"
+static void print_usage() {
+    std::cout << "Usage: levin COMMAND [OPTIONS]\n\n"
               << "Commands:\n"
+              << "  start [OPTIONS]       Start the daemon\n"
+              << "    -c, --config FILE   Configuration file path\n"
+              << "    -f, --foreground    Run in foreground (don't daemonize)\n"
               << "  status                Show daemon status and statistics\n"
+              << "  stats                 Same as status\n"
               << "  list                  List all loaded torrents\n"
-              << "  stats                 Show detailed statistics\n"
               << "  pause                 Pause all torrent activity\n"
               << "  resume                Resume torrent activity\n"
               << "  bandwidth             Show current bandwidth limits\n"
               << "  bandwidth --download KBPS   Set download limit (0 = unlimited)\n"
               << "  bandwidth --upload KBPS     Set upload limit (0 = unlimited)\n"
+              << "  terminate             Stop the daemon\n"
               << "\n"
-              << "Options:\n"
-              << "  --socket PATH   Path to control socket (default: $XDG_STATE_HOME/levin/levin.sock)\n"
-              << "  --version       Show version information\n"
-              << "  --help          Show this help message\n"
+              << "Global options:\n"
+              << "  --socket PATH         Path to control socket (default: $XDG_STATE_HOME/levin/levin.sock)\n"
+              << "  --version             Show version information\n"
+              << "  --help                Show this help message\n"
               << std::endl;
 }
 
-int main(int argc, char** argv) {
+int run_client(int argc, char** argv) {
     std::string socket_path = get_default_socket_path();
     std::string command;
     json args = json::object();
 
     // Parse arguments
-    for (int i = 1; i < argc; ++i) {
+    for (int i = 0; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--socket" && i + 1 < argc) {
             socket_path = argv[++i];
-        } else if (arg == "--version") {
-            std::cout << "Levin v" << PROJECT_VERSION << std::endl;
-            return 0;
         } else if (arg == "--help") {
-            print_usage(argv[0]);
+            print_usage();
             return 0;
         } else if (command.empty()) {
             command = arg;
@@ -279,13 +298,16 @@ int main(int argc, char** argv) {
     }
 
     if (command.empty()) {
-        print_usage(argv[0]);
+        print_usage();
         return 1;
     }
 
     try {
+        // Translate "stats" to "status" for backward compatibility
+        std::string server_command = (command == "stats") ? "status" : command;
+        
         json request = {
-            {"command", command},
+            {"command", server_command},
             {"args", args}
         };
 
@@ -297,13 +319,13 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        if (command == "status") {
+        if (command == "status" || command == "stats") {
             print_status(response["data"]);
         } else if (command == "list") {
             print_list(response["data"]);
-        } else if (command == "stats") {
-            print_stats(response["data"]);
         } else if (command == "pause" || command == "resume") {
+            std::cout << response["message"] << std::endl;
+        } else if (command == "terminate") {
             std::cout << response["message"] << std::endl;
         } else if (command == "bandwidth") {
             // Check if we're just querying or setting bandwidth
@@ -323,3 +345,6 @@ int main(int argc, char** argv) {
         return 1;
     }
 }
+
+} // namespace cli
+} // namespace levin

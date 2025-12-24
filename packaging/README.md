@@ -247,7 +247,7 @@ When releasing a new version, update:
 # Install in container
 docker run -it ubuntu:22.04 bash
 apt-get update && apt-get install -y ./levin_*.deb
-levind --version
+levin --version
 systemctl --user status levin
 ```
 
@@ -257,7 +257,7 @@ systemctl --user status levin
 # Install in container
 docker run -it fedora:40 bash
 dnf install -y ./levin-*.rpm
-levind --version
+levin --version
 systemctl --user status levin
 ```
 
@@ -266,7 +266,7 @@ systemctl --user status levin
 ```bash
 # Install locally
 sudo pacman -U levin-*.pkg.tar.zst
-levind --version
+levin --version
 systemctl --user status levin
 ```
 
@@ -275,7 +275,7 @@ systemctl --user status levin
 ```bash
 # Test formula
 brew install --build-from-source packaging/homebrew/levin.rb
-levind --version
+levin --version
 brew services list
 ```
 

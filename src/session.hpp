@@ -55,6 +55,12 @@ public:
      * Get session statistics.
      */
     void get_stats(uint64_t& downloaded, uint64_t& uploaded, int& num_peers);
+    
+    /**
+     * Get session statistics with rates.
+     */
+    void get_stats_with_rates(uint64_t& downloaded, uint64_t& uploaded, int& num_peers,
+                               int& download_rate, int& upload_rate);
 
     /**
      * Get all torrent handles.

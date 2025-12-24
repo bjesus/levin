@@ -225,7 +225,7 @@ bool Daemon::initialize_components() {
 }
 
 void Daemon::run() {
-    LOG_INFO("Starting Archiver daemon...");
+    LOG_INFO("Starting Levin daemon...");
     
     running_ = true;
     

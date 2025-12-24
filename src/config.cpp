@@ -9,6 +9,70 @@
 namespace levin {
 
 namespace {
+    /**
+     * Parse a human-readable size string like "100mb", "5gb", "1tb" into bytes.
+     * Supports: b, kb, mb, gb, tb (case-insensitive)
+     * Binary units: 1KB = 1024 bytes, 1MB = 1024KB, etc.
+     * 
+     * @param size_str Size string (e.g., "100mb", "5GB", "1024")
+     * @return Size in bytes
+     * @throws std::runtime_error if format is invalid
+     */
+    uint64_t parse_size(const std::string& size_str) {
+        if (size_str.empty()) {
+            throw std::runtime_error("Empty size string");
+        }
+        
+        // Find where the number ends and unit begins
+        size_t pos = 0;
+        while (pos < size_str.length() && 
+               (std::isdigit(size_str[pos]) || size_str[pos] == '.' || size_str[pos] == ' ')) {
+            pos++;
+        }
+        
+        // Skip whitespace
+        while (pos < size_str.length() && std::isspace(size_str[pos])) {
+            pos++;
+        }
+        
+        // Parse the numeric part
+        double value;
+        try {
+            value = std::stod(size_str.substr(0, pos));
+        } catch (...) {
+            throw std::runtime_error("Invalid number in size string: " + size_str);
+        }
+        
+        if (value < 0) {
+            throw std::runtime_error("Size cannot be negative: " + size_str);
+        }
+        
+        // Get the unit part (case-insensitive)
+        std::string unit;
+        if (pos < size_str.length()) {
+            unit = size_str.substr(pos);
+            std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
+        }
+        
+        // Calculate multiplier (binary: 1024-based)
+        uint64_t multiplier = 1;
+        if (unit.empty() || unit == "b") {
+            multiplier = 1;
+        } else if (unit == "kb") {
+            multiplier = 1024ULL;
+        } else if (unit == "mb") {
+            multiplier = 1024ULL * 1024ULL;
+        } else if (unit == "gb") {
+            multiplier = 1024ULL * 1024ULL * 1024ULL;
+        } else if (unit == "tb") {
+            multiplier = 1024ULL * 1024ULL * 1024ULL * 1024ULL;
+        } else {
+            throw std::runtime_error("Unknown size unit: " + unit + " (valid: b, kb, mb, gb, tb)");
+        }
+        
+        return static_cast<uint64_t>(value * multiplier);
+    }
+    
     std::string expand_path(const std::string& path) {
         std::string result = path;
         
@@ -96,7 +160,32 @@ Config Config::load(const std::string& path) {
         // Load disk settings
         if (data.contains("disk")) {
             const auto& disk = toml::find(data, "disk");
-            config.disk.min_free_bytes = toml::find<uint64_t>(disk, "min_free_bytes");
+            
+            // Support both old name (min_free_bytes) and new name (min_free_space)
+            // Also support both integer and string (human-readable) formats
+            if (disk.contains("min_free_space")) {
+                const auto& value = disk.at("min_free_space");
+                if (value.is_integer()) {
+                    config.disk.min_free_bytes = value.as_integer();
+                } else if (value.is_string()) {
+                    config.disk.min_free_bytes = parse_size(value.as_string());
+                } else {
+                    throw std::runtime_error("min_free_space must be an integer or string");
+                }
+            } else if (disk.contains("min_free_bytes")) {
+                // Backwards compatibility with old name
+                const auto& value = disk.at("min_free_bytes");
+                if (value.is_integer()) {
+                    config.disk.min_free_bytes = value.as_integer();
+                } else if (value.is_string()) {
+                    config.disk.min_free_bytes = parse_size(value.as_string());
+                } else {
+                    throw std::runtime_error("min_free_bytes must be an integer or string");
+                }
+            } else {
+                throw std::runtime_error("disk.min_free_space is required");
+            }
+            
             config.disk.min_free_percentage = toml::find<double>(disk, "min_free_percentage");
             config.disk.check_interval_seconds = toml::find<int>(disk, "check_interval_seconds");
         }

@@ -51,7 +51,7 @@ No root access required after initial package installation!
 
 3. **Create default configuration**:
    ```bash
-   levind
+   levin start
    ```
    
    This creates:
@@ -116,7 +116,7 @@ rm -rf ~/.config/levin ~/.cache/levin ~/.local/state/levin
 
 3. **Create default configuration**:
    ```bash
-   levind
+   levin start
    ```
 
 4. **Edit configuration**:
@@ -182,7 +182,7 @@ makepkg -si
 
 1. **Create default configuration**:
    ```bash
-   levind
+   levin start
    ```
 
 2. **Edit configuration**:
@@ -226,7 +226,7 @@ rm -rf ~/.config/levin ~/.cache/levin ~/.local/state/levin
 
 3. **Create default configuration**:
    ```bash
-   levind
+   levin start
    ```
 
 4. **Edit configuration**:
@@ -344,13 +344,13 @@ brew install cmake boost libtorrent-rasterbar openssl@3 pkg-config
    
    Or run from build directory:
    ```bash
-   ./levind --version
+   ./levin --version
    ./cli/levin --version
    ```
 
 5. **Create configuration**:
    ```bash
-   levind  # or ./build/levind if not installed
+   levin  # or ./build/levin if not installed
    ```
 
 6. **Enable service** (if installed):
@@ -380,7 +380,7 @@ On first run, Levin creates `~/.config/levin/levin.toml` with sensible defaults.
 **Disk Space Management:**
 ```toml
 [disk]
-min_free_bytes = 1073741824       # 1GB minimum free
+min_free_space = "1gb"            # Human-readable: "100mb", "5gb", or bytes
 min_free_percentage = 0.05        # 5% of disk must stay free
 check_interval_seconds = 60       # Check every minute
 ```
@@ -470,12 +470,12 @@ brew services restart levin
 
 Run in foreground for testing:
 ```bash
-levind --foreground
+levin --foreground
 ```
 
 With custom config:
 ```bash
-levind --config /path/to/config.toml --foreground
+levin --config /path/to/config.toml --foreground
 ```
 
 ## Troubleshooting
@@ -491,7 +491,7 @@ levind --config /path/to/config.toml --foreground
 
 2. **Check configuration**:
    ```bash
-   levind --config ~/.config/levin/levin.toml --foreground
+   levin --config ~/.config/levin/levin.toml --foreground
    ```
    
    This will show errors immediately.
@@ -508,7 +508,7 @@ levind --config /path/to/config.toml --foreground
 1. **Check if daemon is running**:
    ```bash
    systemctl --user status levin
-   ps aux | grep levind
+   ps aux | grep levin
    ```
 
 2. **Check control socket**:
@@ -532,7 +532,7 @@ levind --config /path/to/config.toml --foreground
 2. **Adjust disk limits** in `~/.config/levin/levin.toml`:
    ```toml
    [disk]
-   min_free_bytes = 2147483648      # Increase to 2GB
+   min_free_space = "2gb"           # Increase to 2GB
    min_free_percentage = 0.10       # Increase to 10%
    ```
 
@@ -578,10 +578,10 @@ sudo dnf install boost-system boost-filesystem openssl rb_libtorrent
 - **Issues**: [GitHub Issues](https://github.com/bjesus/levin/issues)
 - **Logs**: `~/.local/state/levin/levin.log`
 - **Status**: `levin status`
-- **Version**: `levind --version`
+- **Version**: `levin --version`
 
 Include the following in bug reports:
 - OS and version
-- Levin version (`levind --version`)
+- Levin version (`levin --version`)
 - Relevant log output
 - Configuration (sanitized)

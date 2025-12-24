@@ -43,7 +43,7 @@ brew tap bjesus/levin
 brew install levin
 
 # Start the service
-levind  # First run to create config
+levin  # First run to create config
 brew services start levin
 ```
 

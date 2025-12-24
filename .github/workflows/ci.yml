@@ -55,8 +55,8 @@ jobs:
 
       - name: Test binaries
         run: |
-          ./build/levind --version
-          ./build/cli/levin --version
+          ./build/levin --version
+          ./build/levin --help
 
   code-quality:
     name: Code Quality Checks
@@ -86,11 +86,11 @@ jobs:
             --suppress=unusedFunction \
             --error-exitcode=1 \
             -I src \
-            src/ cli/ 2>&1 | tee cppcheck.log
+            src/ 2>&1 | tee cppcheck.log
 
       - name: Check for TODO/FIXME
         run: |
-          if grep -rn "TODO\|FIXME" src/ cli/ --exclude-dir=build; then
+          if grep -rn "TODO\|FIXME" src/ --exclude-dir=build; then
             echo "::warning::Found TODO or FIXME comments"
           fi
 
