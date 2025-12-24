@@ -14,6 +14,7 @@ class DiskMonitor;
 class Statistics;
 class PieceManager;
 class CLIServer;
+class PowerMonitor;
 
 /**
  * Main daemon class that handles:
@@ -62,6 +63,10 @@ private:
     std::unique_ptr<Statistics> statistics_;
     std::unique_ptr<PieceManager> piece_manager_;
     std::unique_ptr<CLIServer> cli_server_;
+    std::unique_ptr<PowerMonitor> power_monitor_;
+    
+    // Power state
+    std::atomic<bool> paused_for_battery_{false};
 
     // Timers for periodic tasks
     std::chrono::steady_clock::time_point last_disk_check_;

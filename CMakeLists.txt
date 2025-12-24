@@ -18,7 +18,18 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 
 # Find required system packages
-find_package(Boost 1.70 REQUIRED COMPONENTS system filesystem)
+# Boost: Use BoostConfig.cmake if available (Boost >= 1.70)
+if(POLICY CMP0167)
+    cmake_policy(SET CMP0167 NEW)
+endif()
+
+# Try new-style Boost first (for Boost >= 1.90)
+find_package(Boost 1.70 QUIET CONFIG COMPONENTS system filesystem)
+if(NOT Boost_FOUND)
+    # Fall back to FindBoost module (for older versions)
+    find_package(Boost 1.70 REQUIRED COMPONENTS system filesystem)
+endif()
+
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 

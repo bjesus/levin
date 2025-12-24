@@ -7,6 +7,7 @@
 #include "statistics.hpp"
 #include "piece_manager.hpp"
 #include "cli_server.hpp"
+#include "power_monitor.hpp"
 #include "utils.hpp"
 #include <unistd.h>
 #include <sys/stat.h>
@@ -219,6 +220,35 @@ bool Daemon::initialize_components() {
     last_stats_save_ = std::chrono::steady_clock::now();
     last_metrics_update_ = std::chrono::steady_clock::now();
     last_rebalance_ = std::chrono::steady_clock::now();
+
+    // Initialize power monitor if run_on_battery is false
+    if (!config_.daemon.run_on_battery) {
+        power_monitor_ = std::make_unique<PowerMonitor>();
+        power_monitor_->start([this](bool on_ac_power) {
+            if (on_ac_power) {
+                // Plugged into AC - resume if we were paused for battery
+                if (paused_for_battery_) {
+                    LOG_INFO("AC power detected - resuming downloads");
+                    paused_for_battery_ = false;
+                    piece_manager_->rebuild_queues();
+                }
+            } else {
+                // Running on battery - pause
+                if (!paused_for_battery_) {
+                    LOG_INFO("Battery power detected - pausing downloads");
+                    paused_for_battery_ = true;
+                    piece_manager_->emergency_pause_downloads();
+                }
+            }
+        });
+        
+        // Check initial state and pause if needed
+        if (!power_monitor_->is_on_ac_power()) {
+            LOG_INFO("Starting on battery power - pausing downloads");
+            paused_for_battery_ = true;
+            piece_manager_->emergency_pause_downloads();
+        }
+    }
 
     LOG_INFO("All components initialized successfully");
     return true;

@@ -2,6 +2,8 @@
 #include "logger.hpp"
 #include <thread>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
 
 #if defined(__linux__) && defined(HAVE_POWER_MONITOR)
 #include <gio/gio.h>
@@ -24,6 +26,9 @@ struct PowerMonitor::Impl {
     PowerCallback callback;
     std::atomic<bool> running{false};
     std::thread monitor_thread;
+    std::mutex init_mutex;
+    std::condition_variable init_cv;
+    std::atomic<bool> initial_state_ready{false};
 
     static void on_properties_changed(GDBusConnection* /*connection*/,
                                        const gchar* /*sender_name*/,
@@ -109,6 +114,9 @@ struct PowerMonitor::Impl {
     PowerCallback callback;
     std::atomic<bool> running{false};
     std::thread monitor_thread;
+    std::mutex init_mutex;
+    std::condition_variable init_cv;
+    std::atomic<bool> initial_state_ready{false};
 
     static void power_source_callback(void* context) {
         auto* self = static_cast<Impl*>(context);
@@ -197,12 +205,24 @@ void PowerMonitor::start(PowerCallback callback) {
             LOG_ERROR("Failed to connect to system bus: {}", error->message);
             g_error_free(error);
             impl_->running = false;
+            {
+                std::lock_guard<std::mutex> lock(impl_->init_mutex);
+                impl_->initial_state_ready = true;
+            }
+            impl_->init_cv.notify_one();
             return;
         }
 
         // Query initial state
         impl_->on_ac_power = impl_->query_current_state();
         LOG_INFO("Initial power state: {}", impl_->on_ac_power ? "AC power" : "Battery");
+        
+        // Signal that initial state is ready
+        {
+            std::lock_guard<std::mutex> lock(impl_->init_mutex);
+            impl_->initial_state_ready = true;
+        }
+        impl_->init_cv.notify_one();
 
         // Subscribe to UPower signals
         impl_->subscription_id = g_dbus_connection_signal_subscribe(
@@ -248,6 +268,13 @@ void PowerMonitor::start(PowerCallback callback) {
         // Query initial state
         impl_->on_ac_power = impl_->query_current_state();
         LOG_INFO("Initial power state: {}", impl_->on_ac_power ? "AC power" : "Battery");
+        
+        // Signal that initial state is ready
+        {
+            std::lock_guard<std::mutex> lock(impl_->init_mutex);
+            impl_->initial_state_ready = true;
+        }
+        impl_->init_cv.notify_one();
 
         // Create run loop source for power notifications
         impl_->run_loop_source = IOPSNotificationCreateRunLoopSource(
@@ -276,6 +303,13 @@ void PowerMonitor::start(PowerCallback callback) {
     // For unsupported platforms, just query once and assume AC power
     impl_->on_ac_power = impl_->query_current_state();
     LOG_INFO("Power monitoring not supported on this platform, assuming AC power");
+#endif
+
+#if defined(POWER_MONITOR_LINUX) || defined(POWER_MONITOR_MACOS)
+    // Wait for initial state to be determined (with timeout)
+    std::unique_lock<std::mutex> lock(impl_->init_mutex);
+    impl_->init_cv.wait_for(lock, std::chrono::seconds(2), 
+                            [this] { return impl_->initial_state_ready.load(); });
 #endif
 }
 
