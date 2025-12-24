@@ -138,9 +138,45 @@ jobs:
           path: dist/*.tar.gz
           retention-days: 90
 
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+      
+      - name: Grant execute permission for gradlew
+        run: chmod +x android/gradlew
+      
+      - name: Build release APK (unsigned)
+        run: |
+          cd android
+          ./gradlew assembleRelease --stacktrace
+      
+      - name: Rename APK with version
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk \
+             dist/levin-${{ github.ref_name }}-android.apk
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: dist/*.apk
+          retention-days: 90
+
   create-release:
     name: Create GitHub Release
-    needs: [build-debian, build-rpm, build-macos]
+    needs: [build-debian, build-rpm, build-macos, build-android]
     runs-on: ubuntu-latest
     
     steps:
@@ -155,7 +191,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release
-          find artifacts -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) -exec cp {} release/ \;
+          find artifacts -type f \( -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" -o -name "*.apk" \) -exec cp {} release/ \;
           ls -lh release/
 
       - name: Generate release notes
@@ -167,6 +203,16 @@ jobs:
           BitTorrent archive daemon for distributed content preservation.
           
           ### Installation
+          
+          #### Android
+          ```
+          1. Download levin-${{ github.ref_name }}-android.apk
+          2. Enable "Install from Unknown Sources" in Android settings
+          3. Open the APK file to install
+          4. Launch Levin from your app drawer
+          ```
+          
+          **Note**: This is an unsigned APK for testing. You may see a security warning during installation.
           
           #### Debian/Ubuntu
           ```bash
@@ -202,11 +248,17 @@ jobs:
           
           ### Getting Started
           
+          **Desktop (Linux/macOS)**:
           1. Start the daemon: `levin start` (creates config automatically on first run)
           2. Check status: `levin status`
           3. Enable automatic start: `systemctl --user enable levin` (Linux) or `brew services start levin` (macOS)
           
           See `levin --help` for all commands.
+          
+          **Android**:
+          1. Open the Levin app
+          2. Add torrent files or magnet links from the "Add Torrent" screen
+          3. Monitor your torrents and statistics from the main screen
           
           ### What's New
           
