@@ -27,6 +27,9 @@ class LevinSessionManager(
     private var session: SessionManager? = null
     private val torrents = mutableMapOf<String, TorrentHandle>()
     
+    // Track added torrent files so we can re-add them after pause/resume
+    private val addedTorrentFiles = mutableListOf<File>()
+    
     var isPaused = false
         private set
     
@@ -94,8 +97,8 @@ class LevinSessionManager(
             val ti = TorrentInfo(torrentFile)
             val infoHash = ti.infoHash().toHex()
             
-            // Check if already added
-            if (torrents.containsKey(infoHash)) {
+            // Check if already added (only check if not paused, since pause clears torrents map)
+            if (!isPaused && torrents.containsKey(infoHash)) {
                 Log.w(TAG, "Torrent already added: ${torrentFile.name}")
                 return false
             }
@@ -107,6 +110,12 @@ class LevinSessionManager(
             val handle = currentSession.find(ti.infoHash())
             torrents[infoHash] = handle
             
+            // Track this torrent file for pause/resume (avoid duplicates)
+            if (!addedTorrentFiles.any { it.absolutePath == torrentFile.absolutePath }) {
+                addedTorrentFiles.add(torrentFile)
+                Log.d(TAG, "Tracking torrent file: ${torrentFile.name}")
+            }
+            
             Log.i(TAG, "Torrent added successfully: ${torrentFile.name}")
             true
         } catch (e: Exception) {
@@ -116,23 +125,64 @@ class LevinSessionManager(
     }
     
     /**
-     * Pause all torrents (battery/cellular mode)
+     * Pause - completely stop the session to use 0% resources
+     * All torrent state is lost but will be re-added on resume
      */
     fun pause() {
-        Log.i(TAG, "Pausing session")
+        if (isPaused) {
+            Log.w(TAG, "Already paused")
+            return
+        }
+        
+        Log.i(TAG, "Pausing - stopping session completely for 0% resource usage")
         isPaused = true
-        session?.pause()
-        torrents.values.forEach { it.pause() }
+        
+        // Save resume data for all torrents before stopping
+        torrents.values.forEach { handle ->
+            try {
+                if (handle.isValid && handle.needSaveResumeData()) {
+                    handle.saveResumeData()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to save resume data during pause", e)
+            }
+        }
+        
+        // Completely stop the session to free all resources
+        session?.stop()
+        session = null
+        torrents.clear()
+        
+        Log.i(TAG, "Session stopped - 0% resource usage")
     }
     
     /**
-     * Resume all torrents
+     * Resume - restart the session and re-add all torrents
      */
     fun resume() {
-        Log.i(TAG, "Resuming session")
+        if (!isPaused) {
+            Log.w(TAG, "Already running")
+            return
+        }
+        
+        Log.i(TAG, "Resuming - restarting session and re-adding ${addedTorrentFiles.size} torrents")
         isPaused = false
-        session?.resume()
-        torrents.values.forEach { it.resume() }
+        
+        // Restart the session
+        start()
+        
+        // Re-add all previously added torrents
+        val torrentFilesToAdd = addedTorrentFiles.toList()  // Copy to avoid modification during iteration
+        torrentFilesToAdd.forEach { torrentFile ->
+            if (torrentFile.exists()) {
+                addTorrent(torrentFile)
+            } else {
+                Log.w(TAG, "Torrent file no longer exists: ${torrentFile.name}")
+                addedTorrentFiles.remove(torrentFile)
+            }
+        }
+        
+        Log.i(TAG, "Session resumed with ${torrents.size} torrents")
     }
     
     /**
@@ -192,6 +242,7 @@ class LevinSessionManager(
         session?.stop()
         session = null
         torrents.clear()
+        addedTorrentFiles.clear()
         
         Log.i(TAG, "Session stopped")
     }

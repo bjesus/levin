@@ -64,26 +64,30 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/pause_resume_button"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:layout_width="wrap_content"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="2"
                         android:text="Pause"
-                        android:layout_marginEnd="8dp" />
+                        android:layout_marginEnd="8dp"
+                        android:textSize="16sp" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/reload_button"
                         style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Reload Torrents" />
+                        android:layout_weight="1"
+                        android:text="Reload"
+                        android:textSize="14sp" />
                 </LinearLayout>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Session Stats Card -->
+        <!-- Combined Statistics Card (Session + Lifetime) -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/session_card"
+            android:id="@+id/stats_card"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -101,33 +105,45 @@
                 <com.google.android.material.textview.MaterialTextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/session_stats"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+                    android:text="Statistics"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:layout_marginBottom="8dp" />
 
-                <!-- Download Rate -->
+                <!-- Table Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:paddingBottom="4dp">
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="2"
+                        android:text=""
+                        android:textAppearance="?attr/textAppearanceBodySmall" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="@string/download_rate"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+                        android:text="Session"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textStyle="bold"
+                        android:gravity="end" />
 
                     <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/download_rate"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="0 KB/s"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
+                        android:layout_weight="1"
+                        android:text="Lifetime"
+                        android:textAppearance="?attr/textAppearanceBodySmall"
+                        android:textStyle="bold"
+                        android:gravity="end"
+                        android:paddingStart="8dp" />
                 </LinearLayout>
 
-                <!-- Upload Rate -->
+                <!-- Downloaded Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -137,43 +153,33 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/upload_rate"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/upload_rate"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 KB/s"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Downloaded -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
+                        android:layout_weight="2"
                         android:text="@string/downloaded"
                         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/downloaded"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="0 MB"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:gravity="end" />
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/lifetime_downloaded"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="0 GB"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold"
+                        android:gravity="end"
+                        android:paddingStart="8dp" />
                 </LinearLayout>
 
-                <!-- Uploaded -->
+                <!-- Uploaded Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -183,91 +189,33 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
+                        android:layout_weight="2"
                         android:text="@string/uploaded"
                         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/uploaded"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="0 MB"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Lifetime Stats Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/lifetime_card"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardElevation="2dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/session_card">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <com.google.android.material.textview.MaterialTextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/lifetime_stats"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <!-- Lifetime Downloaded -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/total_downloaded"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/lifetime_downloaded"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0 GB"
-                        android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Lifetime Uploaded -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="@string/total_uploaded"
-                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+                        android:textStyle="bold"
+                        android:gravity="end" />
 
                     <com.google.android.material.textview.MaterialTextView
                         android:id="@+id/lifetime_uploaded"
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="0 GB"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:gravity="end"
+                        android:paddingStart="8dp" />
                 </LinearLayout>
 
-                <!-- Ratio -->
+                <!-- Ratio Row -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -277,17 +225,30 @@
                     <com.google.android.material.textview.MaterialTextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
+                        android:layout_weight="2"
                         android:text="@string/ratio"
                         android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                     <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/ratio"
-                        android:layout_width="wrap_content"
+                        android:id="@+id/session_ratio"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="0.00"
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:gravity="end" />
+
+                    <com.google.android.material.textview.MaterialTextView
+                        android:id="@+id/ratio"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="0.00"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold"
+                        android:gravity="end"
+                        android:paddingStart="8dp" />
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

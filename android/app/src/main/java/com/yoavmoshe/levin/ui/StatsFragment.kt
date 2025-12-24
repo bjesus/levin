@@ -31,13 +31,12 @@ class StatsFragment : Fragment() {
     private lateinit var pauseResumeButton: MaterialButton
     private lateinit var reloadButton: MaterialButton
     
-    // Stats views
-    private lateinit var downloadRate: MaterialTextView
-    private lateinit var uploadRate: MaterialTextView
+    // Stats views (combined table)
     private lateinit var downloaded: MaterialTextView
     private lateinit var uploaded: MaterialTextView
     private lateinit var lifetimeDownloaded: MaterialTextView
     private lateinit var lifetimeUploaded: MaterialTextView
+    private lateinit var sessionRatio: MaterialTextView
     private lateinit var ratio: MaterialTextView
     
     override fun onCreateView(
@@ -61,13 +60,12 @@ class StatsFragment : Fragment() {
         pauseResumeButton = view.findViewById(R.id.pause_resume_button)
         reloadButton = view.findViewById(R.id.reload_button)
         
-        // Bind stats views
-        downloadRate = view.findViewById(R.id.download_rate)
-        uploadRate = view.findViewById(R.id.upload_rate)
+        // Bind stats views (combined table)
         downloaded = view.findViewById(R.id.downloaded)
         uploaded = view.findViewById(R.id.uploaded)
         lifetimeDownloaded = view.findViewById(R.id.lifetime_downloaded)
         lifetimeUploaded = view.findViewById(R.id.lifetime_uploaded)
+        sessionRatio = view.findViewById(R.id.session_ratio)
         ratio = view.findViewById(R.id.ratio)
         
         // Setup button listeners
@@ -123,22 +121,18 @@ class StatsFragment : Fragment() {
         
         pauseResumeButton.text = if (stats.isPaused) "Resume" else "Pause"
         
-        // Session stats
-        downloadRate.text = FormatUtils.formatSpeed(stats.sessionDownloadRate)
-        uploadRate.text = FormatUtils.formatSpeed(stats.sessionUploadRate)
+        // Session stats (combined table)
         downloaded.text = FormatUtils.formatSize(stats.sessionDownloaded)
         uploaded.text = FormatUtils.formatSize(stats.sessionUploaded)
         
-        // Lifetime stats
+        // Lifetime stats (combined table)
         lifetimeDownloaded.text = FormatUtils.formatSize(stats.lifetimeDownloaded)
         lifetimeUploaded.text = FormatUtils.formatSize(stats.lifetimeUploaded)
         
-        // Calculate ratio
-        val ratioValue = if (stats.lifetimeDownloaded > 0) {
-            stats.lifetimeUploaded.toDouble() / stats.lifetimeDownloaded.toDouble()
-        } else {
-            0.0
-        }
-        ratio.text = FormatUtils.formatRatio(ratioValue)
+        // Session ratio
+        sessionRatio.text = FormatUtils.formatRatio(stats.sessionRatio)
+        
+        // Lifetime ratio
+        ratio.text = FormatUtils.formatRatio(stats.lifetimeRatio)
     }
 }
