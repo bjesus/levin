@@ -211,6 +211,15 @@ bool Daemon::initialize_components() {
         piece_manager_->rebuild_queues();
     });
     
+    cli_server_->set_paused_for_battery_callback([this]() {
+        return paused_for_battery_.load();
+    });
+    
+    cli_server_->set_terminate_callback([this]() {
+        LOG_INFO("Terminate command received");
+        shutdown();
+    });
+    
     if (!cli_server_->start()) {
         LOG_WARN("Failed to start CLI server (non-fatal)");
     }

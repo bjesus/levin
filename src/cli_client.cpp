@@ -122,11 +122,15 @@ static void print_status(const json& data) {
     bool over_budget = disk["over_budget"];
     uint64_t total = disk["total_bytes"];
     
+    bool paused_for_battery = data.contains("paused_for_battery") && data["paused_for_battery"].get<bool>();
+    
     std::cout << "Status: ";
     if (total == 0) {
         std::cout << "Unable to read filesystem\n";
     } else if (over_budget) {
         std::cout << "⚠ OVER BUDGET\n";
+    } else if (paused_for_battery) {
+        std::cout << "Paused (on battery)\n";
     } else {
         std::cout << "Running\n";
     }
@@ -186,9 +190,8 @@ static void print_status(const json& data) {
     
     // Uptime
     auto uptime = data["uptime"];
-    std::cout << "Uptime:  " << format_duration(uptime["session_seconds"]) 
+    std::cout << "Uptime: " << format_duration(uptime["session_seconds"]) 
               << " (" << format_duration(uptime["lifetime_seconds"]) << ")\n";
-    std::cout << "Sessions: " << uptime["session_count"] << " total\n";
     std::cout << "\n";
 }
 
@@ -256,7 +259,6 @@ static void print_usage() {
               << "    -c, --config FILE   Configuration file path\n"
               << "    -f, --foreground    Run in foreground (don't daemonize)\n"
               << "  status                Show daemon status and statistics\n"
-              << "  stats                 Same as status\n"
               << "  list                  List all loaded torrents\n"
               << "  pause                 Pause all torrent activity\n"
               << "  resume                Resume torrent activity\n"
@@ -303,8 +305,7 @@ int run_client(int argc, char** argv) {
     }
 
     try {
-        // Translate "stats" to "status" for backward compatibility
-        std::string server_command = (command == "stats") ? "status" : command;
+        std::string server_command = command;
         
         json request = {
             {"command", server_command},
@@ -319,7 +320,7 @@ int run_client(int argc, char** argv) {
             return 1;
         }
 
-        if (command == "status" || command == "stats") {
+        if (command == "status") {
             print_status(response["data"]);
         } else if (command == "list") {
             print_list(response["data"]);

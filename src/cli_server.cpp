@@ -143,14 +143,14 @@ json CLIServer::handle_command(const json& request) {
         return handle_status();
     } else if (command == "list") {
         return handle_list();
-    } else if (command == "stats") {
-        return handle_stats();
     } else if (command == "pause") {
         return handle_pause();
     } else if (command == "resume") {
         return handle_resume();
     } else if (command == "bandwidth") {
         return handle_bandwidth(args);
+    } else if (command == "terminate") {
+        return handle_terminate();
     } else {
         return {
             {"success", false},
@@ -174,9 +174,12 @@ json CLIServer::handle_status() {
         pieces_we_have += m.pieces_we_have;
     }
 
+    bool paused_for_battery = paused_for_battery_callback_ ? paused_for_battery_callback_() : false;
+    
     return {
         {"success", true},
         {"data", {
+            {"paused_for_battery", paused_for_battery},
             {"disk", {
                 {"total_bytes", space_status.total_bytes},
                 {"free_bytes", space_status.free_bytes},
@@ -315,6 +318,24 @@ void CLIServer::set_pause_callback(std::function<void()> callback) {
 
 void CLIServer::set_resume_callback(std::function<void()> callback) {
     resume_callback_ = callback;
+}
+
+void CLIServer::set_paused_for_battery_callback(std::function<bool()> callback) {
+    paused_for_battery_callback_ = callback;
+}
+
+void CLIServer::set_terminate_callback(std::function<void()> callback) {
+    terminate_callback_ = callback;
+}
+
+json CLIServer::handle_terminate() {
+    if (terminate_callback_) {
+        terminate_callback_();
+    }
+    return {
+        {"success", true},
+        {"message", "Daemon shutting down"}
+    };
 }
 
 } // namespace levin

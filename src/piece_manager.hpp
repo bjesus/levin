@@ -32,55 +32,11 @@ struct PieceInfo {
     }
 };
 
-/**
- * Metrics for a single torrent.
- */
-struct TorrentMetrics {
-    std::string info_hash;
-    std::string name;
-    libtorrent::torrent_handle handle;
-    
-    int total_seeders;          // Total seeders from DHT/trackers
-    int total_pieces;           // Total pieces in torrent
-    int pieces_we_have;         // Number of pieces we have
-    uint64_t total_size;        // Total size in bytes
-    uint64_t size_we_have;      // Size we have in bytes
-    
-    double torrent_priority;    // Base priority: 1 / (seeders + 1)
-    
-    std::chrono::steady_clock::time_point last_seeder_check;
-};
-
-/**
- * Manages piece-level prioritization and space allocation.
- * This is the core intelligence of the archival system.
- */
-class PieceManager {
-public:
-    PieceManager(const Config& config, Session& session, DiskMonitor& disk_monitor);
-    
-    /**
-     * Update all torrent metrics (seeder counts, piece info).
-     * Call this periodically (e.g., every 15 minutes).
-     */
-    void update_metrics();
-    
-    /**
-     * Rebuild priority queues based on current metrics.
-     */
-    void rebuild_queues();
-    
-    /**
-     * Rebalance disk usage based on current space status.
-     * Downloads pieces if under budget, deletes if over budget.
-     */
-    void rebalance_disk_usage();
-    
     /**
      * Emergency mode: pause all downloads immediately.
-     * Used when critically over budget.
+     * @param reason Reason for pausing (e.g., "disk space emergency", "battery power")
      */
-    void emergency_pause_downloads();
+    void emergency_pause_downloads(const std::string& reason = "disk space emergency");
     
     /**
      * Get total size of data we currently have.

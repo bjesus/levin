@@ -52,6 +52,16 @@ public:
      * Set callback for resume command.
      */
     void set_resume_callback(std::function<void()> callback);
+    
+    /**
+     * Set callback to check if paused for battery.
+     */
+    void set_paused_for_battery_callback(std::function<bool()> callback);
+    
+    /**
+     * Set callback for terminate command.
+     */
+    void set_terminate_callback(std::function<void()> callback);
 
 private:
     const Config& config_;
@@ -66,6 +76,8 @@ private:
 
     std::function<void()> pause_callback_;
     std::function<void()> resume_callback_;
+    std::function<bool()> paused_for_battery_callback_;
+    std::function<void()> terminate_callback_;
 
     /**
      * Handle a command from a client.
@@ -81,6 +93,7 @@ private:
     json handle_pause();
     json handle_resume();
     json handle_bandwidth(const json& args);
+    json handle_terminate();
 
     /**
      * Accept and handle a client connection.

@@ -29,6 +29,7 @@ struct PowerMonitor::Impl {
     std::mutex init_mutex;
     std::condition_variable init_cv;
     std::atomic<bool> initial_state_ready{false};
+    GMainLoop* main_loop = nullptr;
 
     static void on_properties_changed(GDBusConnection* /*connection*/,
                                        const gchar* /*sender_name*/,
@@ -241,14 +242,13 @@ void PowerMonitor::start(PowerCallback callback) {
         // Run GLib main loop
         GMainContext* context = g_main_context_new();
         g_main_context_push_thread_default(context);
-        GMainLoop* loop = g_main_loop_new(context, FALSE);
+        impl_->main_loop = g_main_loop_new(context, FALSE);
 
-        while (impl_->running) {
-            g_main_context_iteration(context, TRUE);
-            if (!impl_->running) break;
-        }
+        // Run the main loop (this will block until quit is called)
+        g_main_loop_run(impl_->main_loop);
 
-        g_main_loop_unref(loop);
+        g_main_loop_unref(impl_->main_loop);
+        impl_->main_loop = nullptr;
         g_main_context_pop_thread_default(context);
         g_main_context_unref(context);
 
@@ -320,6 +320,12 @@ void PowerMonitor::stop() {
 
     LOG_INFO("Stopping power monitor");
     impl_->running = false;
+
+#ifdef POWER_MONITOR_LINUX
+    if (impl_->main_loop && g_main_loop_is_running(impl_->main_loop)) {
+        g_main_loop_quit(impl_->main_loop);
+    }
+#endif
 
 #if defined(POWER_MONITOR_LINUX) || defined(POWER_MONITOR_MACOS)
     if (impl_->monitor_thread.joinable()) {

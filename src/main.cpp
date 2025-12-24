@@ -161,7 +161,6 @@ void print_usage() {
               << "    -c, --config FILE   Configuration file path\n"
               << "    -f, --foreground    Run in foreground (don't daemonize)\n"
               << "  status                Show daemon status and statistics\n"
-              << "  stats                 Same as status\n"
               << "  list                  List all loaded torrents\n"
               << "  pause                 Pause all torrent activity\n"
               << "  resume                Resume torrent activity\n"
