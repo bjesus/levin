@@ -56,7 +56,9 @@ class LevinService : Service() {
     // State
     private var isRunning = false
     private var updateCounter = 0  // Counter for periodic lifetime saves
-    private var isStorageOverLimit = false  // Track if paused due to storage
+    private var isStorageOverLimit = false  // Track if downloads paused due to storage
+    private var isOnBattery = false  // Track current battery state
+    private var isOnCellular = false  // Track current network state
     
     override fun onCreate() {
         super.onCreate()
@@ -231,22 +233,18 @@ class LevinService : Service() {
             val maxMb = storageStatus.maxAllowedBytes?.let { it / (1024 * 1024) } ?: 0
             Log.w(TAG, "Storage budget exceeded! Used: $usedMb MB, Max: $maxMb MB, Over by: $deficitMb MB")
             
-            // CRITICAL: Pause downloads immediately when storage limit is exceeded
-            isStorageOverLimit = true
-            if (!sessionManager.isPaused) {
-                Log.w(TAG, "Pausing downloads due to storage limit violation")
-                handlePause()
+            // CRITICAL: Pause downloads only (uploads continue)
+            if (!isStorageOverLimit) {
+                isStorageOverLimit = true
+                Log.w(TAG, "Pausing DOWNLOADS due to storage limit (uploads continue)")
+                sessionManager.pauseDownloads()
             }
         } else {
             // Storage is OK - clear the flag
             if (isStorageOverLimit) {
-                Log.i(TAG, "Storage now within limits")
+                Log.i(TAG, "Storage now within limits - resuming downloads")
                 isStorageOverLimit = false
-                // Check if we should resume (only if all other conditions are met)
-                if (sessionManager.isPaused && shouldBeRunning()) {
-                    Log.i(TAG, "Storage OK and all conditions met - resuming downloads")
-                    handleResume()
-                }
+                sessionManager.resumeDownloads()
             }
         }
         
@@ -306,55 +304,57 @@ class LevinService : Service() {
     }
     
     /**
-     * Check if all operating conditions are met to run
-     * Returns true if downloads should be active, false if should be paused
+     * Power state changed callback
+     * Battery condition requires COMPLETE pause (no network activity at all)
      */
-    private fun shouldBeRunning(): Boolean {
-        // Check power condition
-        val isCharging = powerMonitor.isCharging()
-        val powerOk = settings.runOnBattery || isCharging
-        if (!powerOk) {
-            Log.d(TAG, "Power condition not met: charging=$isCharging, runOnBattery=${settings.runOnBattery}")
-            return false
-        }
-        
-        // Check network condition (we don't have a simple getter, so skip this check for now)
-        // The network monitor will call onNetworkTypeChanged when state changes
-        
-        // Check storage condition
-        if (isStorageOverLimit) {
-            Log.d(TAG, "Storage condition not met: over limit")
-            return false
-        }
-        
-        return true
-    }
-    
     private fun onPowerStateChanged(isCharging: Boolean) {
-        // Check all conditions and pause/resume appropriately
-        if (shouldBeRunning()) {
-            if (sessionManager.isPaused) {
-                Log.i(TAG, "All conditions met - resuming downloads")
-                handleResume()
-            }
-        } else {
+        isOnBattery = !isCharging
+        Log.d(TAG, "Power state changed: charging=$isCharging, runOnBattery=${settings.runOnBattery}")
+        
+        // Check if we should run on current power state
+        val shouldRun = settings.runOnBattery || isCharging
+        
+        if (!shouldRun) {
+            // On battery and not allowed - COMPLETELY pause session (no network)
             if (!sessionManager.isPaused) {
-                Log.i(TAG, "Conditions not met - pausing downloads")
+                Log.w(TAG, "On battery power (runOnBattery=false) - PAUSING SESSION COMPLETELY")
                 handlePause()
             }
+        } else {
+            // Power conditions OK - resume if currently paused
+            if (sessionManager.isPaused && !isOnCellular || settings.runOnCellular) {
+                // Only resume if network conditions also OK
+                Log.i(TAG, "Power OK and network OK - resuming session")
+                handleResume()
+            }
         }
     }
     
+    /**
+     * Network state changed callback
+     * Network condition requires COMPLETE pause (no network activity at all)
+     */
     private fun onNetworkTypeChanged(isWifi: Boolean, isCellular: Boolean) {
-        // Pause if on cellular-only and cellular not allowed
-        val networkOk = isWifi || settings.runOnCellular
+        // Track if we're on cellular-only (no WiFi)
+        isOnCellular = isCellular && !isWifi
+        Log.d(TAG, "Network state changed: wifi=$isWifi, cellular=$isCellular, runOnCellular=${settings.runOnCellular}")
         
-        if (!networkOk && !sessionManager.isPaused) {
-            Log.i(TAG, "On cellular network (runOnCellular=false) - pausing downloads")
-            handlePause()
-        } else if (networkOk && sessionManager.isPaused && shouldBeRunning()) {
-            Log.i(TAG, "Network conditions met and all conditions OK - resuming downloads")
-            handleResume()
+        // Check if we should run on current network
+        val shouldRun = isWifi || settings.runOnCellular
+        
+        if (!shouldRun) {
+            // On cellular only and not allowed - COMPLETELY pause session (no network)
+            if (!sessionManager.isPaused) {
+                Log.w(TAG, "On cellular network (runOnCellular=false) - PAUSING SESSION COMPLETELY")
+                handlePause()
+            }
+        } else {
+            // Network conditions OK - resume if currently paused
+            if (sessionManager.isPaused && !isOnBattery || settings.runOnBattery) {
+                // Only resume if power conditions also OK
+                Log.i(TAG, "Network OK and power OK - resuming session")
+                handleResume()
+            }
         }
     }
     

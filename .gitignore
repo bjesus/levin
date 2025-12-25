@@ -53,3 +53,6 @@ statistics.json
 # Torrent data (desktop only - exclude from root)
 /data/
 /torrents/
+
+# Agent development notes (local only)
+AGENTS.md

@@ -33,6 +33,9 @@ class LevinSessionManager(
     var isPaused = false
         private set
     
+    var isDownloadPaused = false
+        private set
+    
     companion object {
         private const val TAG = "LevinSessionManager"
     }
@@ -225,6 +228,60 @@ class LevinSessionManager(
                 null
             }
         }
+    }
+    
+    /**
+     * Pause downloads only (for storage limit) - uploads continue
+     * Sets download rate limit to 1 byte/sec (effectively 0)
+     */
+    fun pauseDownloads() {
+        if (isDownloadPaused) {
+            Log.w(TAG, "Downloads already paused")
+            return
+        }
+        
+        val currentSession = session
+        if (currentSession == null) {
+            Log.w(TAG, "Cannot pause downloads: session not started")
+            return
+        }
+        
+        Log.i(TAG, "Pausing downloads only (uploads continue)")
+        isDownloadPaused = true
+        
+        // Set download rate limit to 1 byte/sec (effectively stops downloads)
+        // Upload limit remains unlimited
+        val pack = settings_pack()
+        pack.set_int(settings_pack.int_types.download_rate_limit.swigValue(), 1)
+        currentSession.swig().apply_settings(pack)
+        
+        Log.i(TAG, "Downloads paused (rate limit = 1 byte/sec) - uploads still active")
+    }
+    
+    /**
+     * Resume downloads (for storage limit)
+     */
+    fun resumeDownloads() {
+        if (!isDownloadPaused) {
+            Log.w(TAG, "Downloads not paused")
+            return
+        }
+        
+        val currentSession = session
+        if (currentSession == null) {
+            Log.w(TAG, "Cannot resume downloads: session not started")
+            return
+        }
+        
+        Log.i(TAG, "Resuming downloads")
+        isDownloadPaused = false
+        
+        // Set download rate limit back to unlimited (0 = unlimited in libtorrent)
+        val pack = settings_pack()
+        pack.set_int(settings_pack.int_types.download_rate_limit.swigValue(), 0)
+        currentSession.swig().apply_settings(pack)
+        
+        Log.i(TAG, "Downloads resumed (rate limit = unlimited)")
     }
     
     /**
