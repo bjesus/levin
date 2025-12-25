@@ -167,15 +167,14 @@ namespace {
 } // anonymous namespace
 
 std::vector<std::string> fetch_torrent_urls(int max_retries) {
-    LOG_INFO("Fetching torrent list from Anna's Archive");
-    
     std::string response;
     std::string error;
     int backoff_ms = INITIAL_BACKOFF_MS;
     
     for (int attempt = 1; attempt <= max_retries; attempt++) {
         if (attempt > 1) {
-            LOG_WARN("Retry attempt {}/{} after {}ms", attempt, max_retries, backoff_ms);
+            std::cerr << "Retry attempt " << attempt << "/" << max_retries 
+                     << " after " << backoff_ms << "ms..." << std::endl;
             std::this_thread::sleep_for(std::chrono::milliseconds(backoff_ms));
             backoff_ms *= 2;  // Exponential backoff
         }
@@ -183,12 +182,11 @@ std::vector<std::string> fetch_torrent_urls(int max_retries) {
         if (http_get(ANNAS_ARCHIVE_URL, response, error)) {
             // Success!
             auto urls = split_lines(response);
-            LOG_INFO("Fetched {} torrent URLs from Anna's Archive", urls.size());
             return urls;
         }
         
-        LOG_WARN("Failed to fetch torrent list (attempt {}/{}): {}", 
-                 attempt, max_retries, error);
+        std::cerr << "Failed to fetch torrent list (attempt " << attempt << "/" 
+                 << max_retries << "): " << error << std::endl;
     }
     
     throw std::runtime_error("Failed to fetch torrent list from Anna's Archive after " + 
@@ -201,7 +199,6 @@ bool download_torrent(const std::string& url, const std::string& output_path, in
     
     for (int attempt = 1; attempt <= max_retries; attempt++) {
         if (attempt > 1) {
-            LOG_DEBUG("Retry downloading {} (attempt {}/{})", url, attempt, max_retries);
             std::this_thread::sleep_for(std::chrono::milliseconds(backoff_ms));
             backoff_ms *= 2;  // Exponential backoff
         }
@@ -209,12 +206,8 @@ bool download_torrent(const std::string& url, const std::string& output_path, in
         if (http_download_file(url, output_path, error)) {
             return true;
         }
-        
-        LOG_DEBUG("Failed to download {} (attempt {}/{}): {}", 
-                  url, attempt, max_retries, error);
     }
     
-    LOG_ERROR("Failed to download {} after {} attempts: {}", url, max_retries, error);
     return false;
 }
 
@@ -235,8 +228,6 @@ DownloadResult populate_torrents(
     result.successful = 0;
     result.failed = 0;
     
-    LOG_INFO("Downloading {} torrents to {}", urls.size(), watch_directory);
-    
     // Download each torrent
     for (size_t i = 0; i < urls.size(); i++) {
         const auto& url = urls[i];
@@ -247,7 +238,6 @@ DownloadResult populate_torrents(
         
         // Skip if already exists
         if (std::filesystem::exists(output_path)) {
-            LOG_DEBUG("Torrent already exists, skipping: {}", filename);
             result.successful++;
             if (progress_callback) {
                 progress_callback(i + 1, urls.size());
@@ -268,9 +258,6 @@ DownloadResult populate_torrents(
             progress_callback(i + 1, urls.size());
         }
     }
-    
-    LOG_INFO("Download complete: {}/{} successful, {} failed", 
-             result.successful, result.total_urls, result.failed);
     
     return result;
 }
