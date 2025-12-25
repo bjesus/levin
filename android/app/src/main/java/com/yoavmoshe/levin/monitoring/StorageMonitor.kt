@@ -23,22 +23,11 @@ class StorageMonitor(private val settings: LevinSettings) {
         val freeBytes: Long,
         val usedByLevinBytes: Long,
         val budgetBytes: Long,
-        val allowedBytes: Long
-    ) {
-        /**
-         * Percentage of allowed storage used
-         */
-        val usagePercent: Float
-            get() = if (allowedBytes > 0) {
-                (usedByLevinBytes.toFloat() / allowedBytes.toFloat()) * 100f
-            } else 0f
-        
-        /**
-         * Is storage over budget?
-         */
-        val isOverBudget: Boolean
-            get() = usedByLevinBytes >= allowedBytes || freeBytes < 100 * 1024 * 1024 // 100MB minimum
-    }
+        val minRequiredFreeBytes: Long,
+        val maxAllowedBytes: Long?,  // null = unlimited
+        val isOverBudget: Boolean,
+        val deficitBytes: Long = 0
+    )
     
     /**
      * Get current storage status
@@ -54,20 +43,46 @@ class StorageMonitor(private val settings: LevinSettings) {
         // Calculate space used by Levin
         val usedByLevin = calculateDirectorySize(dataDir)
         
-        // Calculate budget
-        val allowedBytes = settings.allowedStorageBytes
-        val minFreeBytes = settings.minFreeSpaceBytes
-        val budgetBytes = minOf(
-            allowedBytes - usedByLevin,
-            freeBytes - minFreeBytes
-        ).coerceAtLeast(0)
+        // Calculate available space respecting minimum free
+        val minRequired = settings.minFree
+        val availableSpace = (freeBytes - minRequired).coerceAtLeast(0)
+        
+        // Calculate budget respecting both constraints
+        val budget = if (settings.maxStorage != null) {
+            val availableForLevin = (settings.maxStorage - usedByLevin).coerceAtLeast(0)
+            minOf(availableSpace, availableForLevin)
+        } else {
+            availableSpace
+        }
+        
+        // Determine if over budget
+        val overBudget = when {
+            budget <= 0 -> true
+            settings.maxStorage != null && usedByLevin >= settings.maxStorage -> true
+            freeBytes < minRequired -> true
+            usedByLevin > 0 && usedByLevin > budget -> true
+            else -> false
+        }
+        
+        val deficit = when {
+            settings.maxStorage != null && usedByLevin > settings.maxStorage ->
+                usedByLevin - settings.maxStorage
+            freeBytes < minRequired ->
+                minRequired - freeBytes
+            usedByLevin > budget ->
+                usedByLevin - budget
+            else -> 0L
+        }
         
         return StorageStatus(
             totalBytes = totalBytes,
             freeBytes = freeBytes,
             usedByLevinBytes = usedByLevin,
-            budgetBytes = budgetBytes,
-            allowedBytes = allowedBytes
+            budgetBytes = budget,
+            minRequiredFreeBytes = minRequired,
+            maxAllowedBytes = settings.maxStorage,
+            isOverBudget = overBudget,
+            deficitBytes = deficit
         )
     }
     
@@ -110,8 +125,14 @@ class StorageMonitor(private val settings: LevinSettings) {
      */
     fun logStatus() {
         val status = getStatus()
-        Log.i(TAG, "Storage: ${status.usedByLevinBytes / (1024 * 1024)} MB / " +
-                  "${status.allowedBytes / (1024 * 1024)} MB " +
-                  "(${String.format("%.1f", status.usagePercent)}%)")
+        val maxStr = if (status.maxAllowedBytes != null) {
+            "${status.maxAllowedBytes / (1024 * 1024)} MB"
+        } else {
+            "unlimited"
+        }
+        Log.i(TAG, "Storage: ${status.usedByLevinBytes / (1024 * 1024)} MB used, " +
+                  "Budget: ${status.budgetBytes / (1024 * 1024)} MB, " +
+                  "Max: $maxStr, " +
+                  "Min Free: ${status.minRequiredFreeBytes / (1024 * 1024)} MB")
     }
 }

@@ -163,32 +163,58 @@ Config Config::load(const std::string& path) {
         if (data.contains("disk")) {
             const auto& disk = toml::find(data, "disk");
             
-            // Support both old name (min_free_bytes) and new name (min_free_space)
-            // Also support both integer and string (human-readable) formats
-            if (disk.contains("min_free_space")) {
+            // REQUIRED: min_free (supports human-readable or bytes)
+            // Also support old names for backward compatibility
+            if (disk.contains("min_free")) {
+                const auto& value = disk.at("min_free");
+                if (value.is_integer()) {
+                    config.disk.min_free = value.as_integer();
+                } else if (value.is_string()) {
+                    config.disk.min_free = parse_size(value.as_string());
+                } else {
+                    throw std::runtime_error("min_free must be an integer or string");
+                }
+            } else if (disk.contains("min_free_space")) {
+                // Backward compatibility
                 const auto& value = disk.at("min_free_space");
                 if (value.is_integer()) {
-                    config.disk.min_free_bytes = value.as_integer();
+                    config.disk.min_free = value.as_integer();
                 } else if (value.is_string()) {
-                    config.disk.min_free_bytes = parse_size(value.as_string());
+                    config.disk.min_free = parse_size(value.as_string());
                 } else {
                     throw std::runtime_error("min_free_space must be an integer or string");
                 }
             } else if (disk.contains("min_free_bytes")) {
-                // Backwards compatibility with old name
+                // Backward compatibility
                 const auto& value = disk.at("min_free_bytes");
                 if (value.is_integer()) {
-                    config.disk.min_free_bytes = value.as_integer();
+                    config.disk.min_free = value.as_integer();
                 } else if (value.is_string()) {
-                    config.disk.min_free_bytes = parse_size(value.as_string());
+                    config.disk.min_free = parse_size(value.as_string());
                 } else {
                     throw std::runtime_error("min_free_bytes must be an integer or string");
                 }
             } else {
-                throw std::runtime_error("disk.min_free_space is required");
+                throw std::runtime_error("disk.min_free is required");
             }
             
+            // REQUIRED: min_free_percentage
             config.disk.min_free_percentage = toml::find<double>(disk, "min_free_percentage");
+            
+            // OPTIONAL: max_storage (0 or omitted = unlimited)
+            if (disk.contains("max_storage")) {
+                const auto& value = disk.at("max_storage");
+                if (value.is_integer()) {
+                    config.disk.max_storage = value.as_integer();
+                } else if (value.is_string()) {
+                    config.disk.max_storage = parse_size(value.as_string());
+                } else {
+                    throw std::runtime_error("max_storage must be an integer or string");
+                }
+            } else {
+                config.disk.max_storage = 0; // Unlimited
+            }
+            
             config.disk.check_interval_seconds = toml::find<int>(disk, "check_interval_seconds");
         }
 
@@ -274,7 +300,7 @@ bool Config::validate() const {
     }
 
     // Validate disk settings
-    if (disk.min_free_bytes == 0 && disk.min_free_percentage == 0.0) {
+    if (disk.min_free == 0 && disk.min_free_percentage == 0.0) {
         return false; // Must have at least one minimum
     }
     if (disk.min_free_percentage < 0.0 || disk.min_free_percentage > 1.0) {
@@ -338,7 +364,7 @@ bool Config::validate() const {
 }
 
 uint64_t Config::get_effective_min_free_space(uint64_t total_disk_bytes) const {
-    uint64_t absolute_min = disk.min_free_bytes;
+    uint64_t absolute_min = disk.min_free;
     uint64_t percentage_min = static_cast<uint64_t>(total_disk_bytes * disk.min_free_percentage);
     return std::max(absolute_min, percentage_min);
 }

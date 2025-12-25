@@ -20,7 +20,7 @@ session_state = "/tmp/session.state"
 statistics_file = "/tmp/stats.json"
 
 [disk]
-min_free_bytes = 1073741824
+min_free = 1073741824
 min_free_percentage = 0.10
 check_interval_seconds = 60
 
@@ -75,7 +75,7 @@ save_interval_minutes = 5
     }
     
     SECTION("Disk configuration") {
-        REQUIRE(config.disk.min_free_bytes == 1073741824);
+        REQUIRE(config.disk.min_free == 1073741824);
         REQUIRE(config.disk.min_free_percentage == 0.10);
         REQUIRE(config.disk.check_interval_seconds == 60);
     }
@@ -111,7 +111,7 @@ session_state = "/tmp/session.state"
 statistics_file = "/tmp/stats.json"
 
 [disk]
-min_free_bytes = 1073741824
+min_free = 1073741824
 min_free_percentage = 0.10
 check_interval_seconds = 60
 

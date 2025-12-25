@@ -23,7 +23,15 @@ data class Statistics(
     val sessionUploadRate: Long = 0,   // bytes/sec
     val activeTorrents: Int = 0,
     val peerCount: Int = 0,
-    val isPaused: Boolean = false
+    val isPaused: Boolean = false,
+    
+    // Disk usage stats
+    val diskUsedBytes: Long = 0,
+    val diskFreeBytes: Long = 0,
+    
+    // Piece stats
+    val piecesHave: Int = 0,
+    val piecesTotal: Int = 0
 ) {
     /**
      * Session uptime
@@ -79,7 +87,11 @@ data class Statistics(
         uploadRate: Long,
         torrents: Int,
         peers: Int,
-        paused: Boolean
+        paused: Boolean,
+        diskUsed: Long = diskUsedBytes,
+        diskFree: Long = diskFreeBytes,
+        piecesHave: Int = this.piecesHave,
+        piecesTotal: Int = this.piecesTotal
     ): Statistics {
         return copy(
             sessionDownloaded = downloaded,
@@ -88,7 +100,11 @@ data class Statistics(
             sessionUploadRate = uploadRate,
             activeTorrents = torrents,
             peerCount = peers,
-            isPaused = paused
+            isPaused = paused,
+            diskUsedBytes = diskUsed,
+            diskFreeBytes = diskFree,
+            piecesHave = piecesHave,
+            piecesTotal = piecesTotal
         )
     }
     

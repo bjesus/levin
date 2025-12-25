@@ -45,32 +45,65 @@ DiskMonitor::SpaceStatus DiskMonitor::check_space() {
     // Calculate minimum required free space
     status.min_required_bytes = config_.get_effective_min_free_space(status.total_bytes);
     
-    // Calculate budget (how much space we can use for torrents)
-    if (status.free_bytes <= status.min_required_bytes) {
-        status.budget_bytes = 0;
-        status.over_budget = true;
-        status.deficit_bytes = status.min_required_bytes - status.free_bytes;
-    } else {
-        status.budget_bytes = status.free_bytes - status.min_required_bytes;
-        status.over_budget = false;
-        status.deficit_bytes = 0;
-    }
+    // Calculate available space respecting minimum free space
+    uint64_t available_space = (status.free_bytes > status.min_required_bytes) 
+        ? status.free_bytes - status.min_required_bytes 
+        : 0;
     
     status.current_usage_bytes = current_usage_bytes_;
     
-    // Additional check: are we using more than our budget?
-    // Only flag as over budget if we're actually using space
-    if (current_usage_bytes_ > 0 && current_usage_bytes_ > status.budget_bytes) {
-        status.over_budget = true;
-        status.deficit_bytes = current_usage_bytes_ - status.budget_bytes;
+    // Apply max_storage constraint if set (0 = unlimited)
+    if (config_.disk.max_storage > 0) {
+        // Calculate how much more we can use within the max_storage limit
+        uint64_t available_for_levin = (current_usage_bytes_ < config_.disk.max_storage)
+            ? config_.disk.max_storage - current_usage_bytes_
+            : 0;
+        
+        // Budget is the minimum of both constraints
+        status.budget_bytes = std::min(available_space, available_for_levin);
+        
+        // Over budget if exceeded max storage
+        if (current_usage_bytes_ > config_.disk.max_storage) {
+            status.over_budget = true;
+            status.deficit_bytes = current_usage_bytes_ - config_.disk.max_storage;
+        } else if (status.budget_bytes == 0 && available_space > 0) {
+            // We hit the max_storage limit but still have disk space
+            status.over_budget = true;
+            status.deficit_bytes = 0;
+        } else {
+            status.over_budget = false;
+            status.deficit_bytes = 0;
+        }
+    } else {
+        // Unlimited storage mode - only respect min_free constraint
+        status.budget_bytes = available_space;
+        
+        if (available_space == 0) {
+            status.over_budget = true;
+            status.deficit_bytes = status.min_required_bytes - status.free_bytes;
+        } else if (current_usage_bytes_ > 0 && current_usage_bytes_ > status.budget_bytes) {
+            // Current usage exceeds budget calculated from min_free constraint
+            status.over_budget = true;
+            status.deficit_bytes = current_usage_bytes_ - status.budget_bytes;
+        } else {
+            status.over_budget = false;
+            status.deficit_bytes = 0;
+        }
     }
     
     // Log status if over budget
     if (status.over_budget) {
-        LOG_WARN("OVER BUDGET! Free: {}, Required: {}, Deficit: {}",
-                 utils::format_bytes(status.free_bytes),
-                 utils::format_bytes(status.min_required_bytes),
-                 utils::format_bytes(status.deficit_bytes));
+        if (config_.disk.max_storage > 0 && current_usage_bytes_ > config_.disk.max_storage) {
+            LOG_WARN("OVER MAX STORAGE! Usage: {}, Max: {}, Deficit: {}",
+                     utils::format_bytes(current_usage_bytes_),
+                     utils::format_bytes(config_.disk.max_storage),
+                     utils::format_bytes(status.deficit_bytes));
+        } else {
+            LOG_WARN("OVER BUDGET! Free: {}, Required: {}, Deficit: {}",
+                     utils::format_bytes(status.free_bytes),
+                     utils::format_bytes(status.min_required_bytes),
+                     utils::format_bytes(status.deficit_bytes));
+        }
     }
     
     return status;

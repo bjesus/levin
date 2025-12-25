@@ -38,6 +38,10 @@ class StatsFragment : Fragment() {
     private lateinit var lifetimeUploaded: MaterialTextView
     private lateinit var sessionRatio: MaterialTextView
     private lateinit var ratio: MaterialTextView
+    private lateinit var diskUsed: MaterialTextView
+    private lateinit var diskFree: MaterialTextView
+    private lateinit var peers: MaterialTextView
+    private lateinit var pieces: MaterialTextView
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -67,6 +71,10 @@ class StatsFragment : Fragment() {
         lifetimeUploaded = view.findViewById(R.id.lifetime_uploaded)
         sessionRatio = view.findViewById(R.id.session_ratio)
         ratio = view.findViewById(R.id.ratio)
+        diskUsed = view.findViewById(R.id.disk_used)
+        diskFree = view.findViewById(R.id.disk_free)
+        peers = view.findViewById(R.id.peers)
+        pieces = view.findViewById(R.id.pieces)
         
         // Setup button listeners
         pauseResumeButton.setOnClickListener {
@@ -133,5 +141,15 @@ class StatsFragment : Fragment() {
         // Ratios
         sessionRatio.text = FormatUtils.formatRatio(stats.sessionRatio)
         ratio.text = FormatUtils.formatRatio(stats.lifetimeRatio)
+        
+        // Disk usage stats
+        diskUsed.text = FormatUtils.formatSize(stats.diskUsedBytes)
+        diskFree.text = FormatUtils.formatSize(stats.diskFreeBytes)
+        
+        // Peer count
+        peers.text = stats.peerCount.toString()
+        
+        // Pieces (have / total)
+        pieces.text = "${stats.piecesHave} / ${stats.piecesTotal}"
     }
 }

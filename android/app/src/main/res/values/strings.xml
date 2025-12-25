@@ -38,13 +38,26 @@
     <string name="settings_power_category">Power &amp; Network</string>
     <string name="settings_about_category">About</string>
     
-    <string name="pref_storage_limit">Storage Limit</string>
+    <string name="pref_min_free">Minimum Free Space (Required)</string>
+    <string name="pref_min_free_summary">Always keep at least this much space free on device</string>
+    <string name="pref_min_free_dialog_title">Minimum Free Space in GB (e.g., 5 or 1.5)</string>
+    <string name="pref_max_storage">Maximum Storage (Optional)</string>
+    <string name="pref_max_storage_summary">Limit Levin data to this size (leave empty for unlimited)</string>
+    <string name="pref_max_storage_dialog_title">Maximum Storage in GB (e.g., 100) or leave empty</string>
     <string name="pref_watch_directory">Watch Directory</string>
     <string name="pref_data_directory">Data Directory</string>
     <string name="pref_run_on_battery">Run on Battery</string>
     <string name="pref_run_on_battery_summary">Continue downloading when unplugged</string>
     <string name="pref_run_on_cellular">Run on Cellular</string>
     <string name="pref_run_on_cellular_summary">Continue downloading on mobile data</string>
+    <string name="pref_run_on_startup">Run on Startup</string>
+    <string name="pref_run_on_startup_summary">Start Levin automatically when device boots</string>
     <string name="pref_version">Version</string>
     <string name="pref_licenses">Open Source Licenses</string>
+    
+    <!-- Stats metrics -->
+    <string name="disk_used">Disk Used</string>
+    <string name="disk_free">Disk Free</string>
+    <string name="peers">Peers</string>
+    <string name="pieces">Pieces</string>
 </resources>

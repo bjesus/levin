@@ -6,6 +6,12 @@
         android:title="@string/settings_power_category">
 
         <SwitchPreferenceCompat
+            android:key="run_on_startup"
+            android:title="@string/pref_run_on_startup"
+            android:summary="@string/pref_run_on_startup_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
             android:key="run_on_battery"
             android:title="@string/pref_run_on_battery"
             android:summary="@string/pref_run_on_battery_summary"
@@ -22,11 +28,22 @@
     <PreferenceCategory
         android:title="@string/settings_storage_category">
 
-        <Preference
-            android:key="storage_limit"
-            android:title="@string/pref_storage_limit"
-            android:summary="1 GB"
-            android:enabled="false" />
+        <EditTextPreference
+            android:key="min_free"
+            android:title="@string/pref_min_free"
+            android:summary="@string/pref_min_free_summary"
+            android:dialogTitle="@string/pref_min_free_dialog_title"
+            android:defaultValue="1"
+            android:inputType="numberDecimal"
+            app:useSimpleSummaryProvider="false" />
+
+        <EditTextPreference
+            android:key="max_storage"
+            android:title="@string/pref_max_storage"
+            android:summary="@string/pref_max_storage_summary"
+            android:dialogTitle="@string/pref_max_storage_dialog_title"
+            android:inputType="numberDecimal"
+            app:useSimpleSummaryProvider="false" />
 
         <Preference
             android:key="watch_directory"
@@ -48,7 +65,7 @@
         <Preference
             android:key="version"
             android:title="@string/pref_version"
-            android:summary="0.1.0" />
+            android:summary="0.2.0" />
 
     </PreferenceCategory>
 

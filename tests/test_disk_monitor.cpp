@@ -34,7 +34,7 @@ session_state = "/tmp/session.state"
 statistics_file = "/tmp/stats.json"
 
 [disk]
-min_free_bytes = )" << min_bytes << R"(
+min_free = )" << min_bytes << R"(
 min_free_percentage = )" << min_percentage << R"(
 check_interval_seconds = 60
 

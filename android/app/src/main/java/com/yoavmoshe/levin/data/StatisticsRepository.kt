@@ -29,6 +29,14 @@ class StatisticsRepository(private val context: Context) {
         private const val KEY_PEER_COUNT = "peer_count"
         private const val KEY_IS_PAUSED = "is_paused"
         private const val KEY_SESSION_START_TIME = "session_start_time"
+        
+        // Keys for disk usage stats
+        private const val KEY_DISK_USED_BYTES = "disk_used_bytes"
+        private const val KEY_DISK_FREE_BYTES = "disk_free_bytes"
+        
+        // Keys for piece stats
+        private const val KEY_PIECES_HAVE = "pieces_have"
+        private const val KEY_PIECES_TOTAL = "pieces_total"
     }
     
     /**
@@ -48,7 +56,13 @@ class StatisticsRepository(private val context: Context) {
             activeTorrents = prefs.getInt(KEY_ACTIVE_TORRENTS, 0),
             peerCount = prefs.getInt(KEY_PEER_COUNT, 0),
             isPaused = prefs.getBoolean(KEY_IS_PAUSED, false),
-            sessionStartTime = prefs.getLong(KEY_SESSION_START_TIME, System.currentTimeMillis())
+            sessionStartTime = prefs.getLong(KEY_SESSION_START_TIME, System.currentTimeMillis()),
+            // Disk usage stats
+            diskUsedBytes = prefs.getLong(KEY_DISK_USED_BYTES, 0),
+            diskFreeBytes = prefs.getLong(KEY_DISK_FREE_BYTES, 0),
+            // Piece stats
+            piecesHave = prefs.getInt(KEY_PIECES_HAVE, 0),
+            piecesTotal = prefs.getInt(KEY_PIECES_TOTAL, 0)
         )
     }
     
@@ -70,6 +84,12 @@ class StatisticsRepository(private val context: Context) {
             putInt(KEY_PEER_COUNT, stats.peerCount)
             putBoolean(KEY_IS_PAUSED, stats.isPaused)
             putLong(KEY_SESSION_START_TIME, stats.sessionStartTime)
+            // Disk usage stats
+            putLong(KEY_DISK_USED_BYTES, stats.diskUsedBytes)
+            putLong(KEY_DISK_FREE_BYTES, stats.diskFreeBytes)
+            // Piece stats
+            putInt(KEY_PIECES_HAVE, stats.piecesHave)
+            putInt(KEY_PIECES_TOTAL, stats.piecesTotal)
             apply()
         }
     }

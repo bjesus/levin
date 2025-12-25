@@ -220,8 +220,26 @@ class LevinService : Service() {
         // Check storage limits
         val storageStatus = storageMonitor.getStatus()
         if (storageStatus.isOverBudget) {
-            Log.w(TAG, "Storage budget exceeded: ${storageStatus.usagePercent}%")
+            val deficitMb = storageStatus.deficitBytes / (1024 * 1024)
+            Log.w(TAG, "Storage budget exceeded by $deficitMb MB!")
             // TODO: Pause downloads or delete old torrents
+        }
+        
+        // Calculate piece statistics from all torrents
+        val torrentStatuses = sessionManager.getTorrentStatuses()
+        var totalPiecesHave = 0
+        var totalPiecesTotal = 0
+        try {
+            torrentStatuses.forEach { status ->
+                // Get the number of pieces in the torrent and how many we have
+                val numPieces = status.numPieces()
+                val progress = status.progress()
+                totalPiecesTotal += numPieces
+                // Calculate pieces we have from progress percentage
+                totalPiecesHave += (numPieces * progress).toInt()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error calculating piece statistics", e)
         }
         
         // Update current stats
@@ -232,7 +250,11 @@ class LevinService : Service() {
             uploadRate = sessionStats.uploadRate,
             torrents = sessionStats.activeTorrents,
             peers = sessionStats.peerCount,
-            paused = sessionManager.isPaused
+            paused = sessionManager.isPaused,
+            diskUsed = storageStatus.usedByLevinBytes,
+            diskFree = storageStatus.freeBytes,
+            piecesHave = totalPiecesHave,
+            piecesTotal = totalPiecesTotal
         )
         
         // Save to repository every update

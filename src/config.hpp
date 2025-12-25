@@ -28,8 +28,9 @@ struct Config {
 
     // Disk management settings
     struct {
-        uint64_t min_free_bytes;
-        double min_free_percentage;
+        uint64_t min_free;              // Minimum free space in bytes (REQUIRED)
+        double min_free_percentage;     // Minimum free space as percentage (REQUIRED)
+        uint64_t max_storage;           // Maximum storage Levin can use in bytes (OPTIONAL, 0 = unlimited)
         int check_interval_seconds;
     } disk;
 

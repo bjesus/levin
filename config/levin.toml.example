@@ -25,13 +25,19 @@ session_state = "/var/lib/levin/session.state"
 statistics_file = "/var/lib/levin/statistics.json"
 
 [disk]
-# Minimum free space in bytes (10GB = 10737418240)
-# This is an absolute minimum - if free space drops below this, data will be removed
-min_free_bytes = 10737418240
+# REQUIRED: Minimum free space (supports human-readable format or bytes)
+# Examples: "10gb", "5.5GB", "1tb", or 10737418240 (bytes)
+# This is the minimum free space that must remain on the disk
+min_free = "10gb"
 
-# Minimum free space as percentage of total disk (0.10 = 10%)
-# The effective minimum is max(min_free_bytes, total_disk * min_free_percentage)
+# REQUIRED: Minimum free space as percentage of total disk (0.10 = 10%)
+# The effective minimum is max(min_free, total_disk * min_free_percentage)
 min_free_percentage = 0.10
+
+# OPTIONAL: Maximum storage Levin can use (supports human-readable format or bytes)
+# Examples: "100gb", "1tb", or omit/comment out for unlimited
+# If set, Levin will stop downloading once its data directory reaches this size
+max_storage = "100gb"
 
 # How often to check disk space (in seconds)
 check_interval_seconds = 60

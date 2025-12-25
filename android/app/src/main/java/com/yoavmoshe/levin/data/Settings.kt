@@ -10,10 +10,11 @@ data class LevinSettings(
     // Storage
     val dataDirectory: File,
     val watchDirectory: File,
-    val allowedStorageBytes: Long = 1L * 1024 * 1024 * 1024, // 1 GB default
-    val minFreeSpaceBytes: Long = 100L * 1024 * 1024, // 100 MB minimum free
+    val minFree: Long = 1L * 1024 * 1024 * 1024, // REQUIRED - 1 GB default (minimum free space)
+    val maxStorage: Long? = null, // OPTIONAL - null = unlimited (maximum storage Levin can use)
     
     // Power & Network
+    val runOnStartup: Boolean = false,  // Run on device boot
     val runOnBattery: Boolean = true,  // Changed default to true for better UX
     val runOnCellular: Boolean = true,  // Changed default to true for better UX
     
