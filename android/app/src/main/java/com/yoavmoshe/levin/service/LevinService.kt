@@ -175,13 +175,17 @@ class LevinService : Service() {
     private fun handlePause() {
         Log.i(TAG, "Pausing downloads")
         sessionManager.pause()
-        updateNotification()
+        // When paused, stop foreground and remove notification
+        // We don't need foreground status when not actively downloading
+        stopForeground(STOP_FOREGROUND_REMOVE)
     }
     
     private fun handleResume() {
         Log.i(TAG, "Resuming downloads")
         sessionManager.resume()
-        updateNotification()
+        // When resuming, become foreground service again and show notification
+        val notification = buildNotification()
+        startForeground(NotificationHelper.NOTIFICATION_ID, notification)
     }
     
     private fun handleReload() {
