@@ -31,12 +31,13 @@ jobs:
             libboost-filesystem-dev \
             libssl-dev \
             libtorrent-rasterbar-dev \
+            libcurl4-openssl-dev \
             pkg-config
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install cmake boost libtorrent-rasterbar openssl@3 pkg-config
+          brew install cmake boost libtorrent-rasterbar openssl@3 pkg-config curl
 
       - name: Configure CMake
         run: |
@@ -106,6 +107,7 @@ jobs:
             libboost-filesystem-dev \
             libssl-dev \
             libtorrent-rasterbar-dev \
+            libcurl4-openssl-dev \
             pkg-config \
             debhelper \
             devscripts
@@ -153,6 +155,7 @@ jobs:
             libboost-filesystem-dev \
             libssl-dev \
             libtorrent-rasterbar-dev \
+            libcurl4-openssl-dev \
             pkg-config \
             cppcheck
 
