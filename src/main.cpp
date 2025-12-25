@@ -3,6 +3,7 @@
 #include "daemon.hpp"
 #include "utils.hpp"
 #include "cli_client.hpp"
+#include "annas_archive.hpp"
 #include <iostream>
 #include <cstdlib>
 #include <getopt.h>
@@ -146,8 +147,33 @@ bool create_default_config() {
     file << get_default_config_content();
     file.close();
     
-    std::cout << "Created default configuration at: " << config_path << "\n\n"
-              << "Please review and customize the configuration, then start the daemon:\n"
+    std::cout << "Created default configuration at: " << config_path << std::endl;
+    
+    // Ask user if they want to populate torrents from Anna's Archive
+    if (annas_archive::prompt_user_to_populate()) {
+        std::cout << "\nFetching torrent list from Anna's Archive..." << std::endl;
+        
+        try {
+            auto result = annas_archive::populate_torrents(
+                torrents_dir,
+                [](int current, int total) {
+                    std::cout << "\rDownloading torrents: " << current << "/" << total << std::flush;
+                }
+            );
+            
+            std::cout << "\n\nDownload complete!" << std::endl;
+            std::cout << "Successfully downloaded: " << result.successful << " torrents" << std::endl;
+            
+            if (result.failed > 0) {
+                std::cout << "Failed downloads: " << result.failed << std::endl;
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "\nError: " << e.what() << std::endl;
+            std::cerr << "You can manually add torrent files to: " << torrents_dir << std::endl;
+        }
+    }
+    
+    std::cout << "\nPlease review and customize the configuration, then start the daemon:\n"
               << "  levin start\n"
               << std::endl;
     

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(levin VERSION 0.2.2 LANGUAGES CXX)
+project(levin VERSION 0.3.0 LANGUAGES CXX)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -32,6 +32,7 @@ endif()
 
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(CURL REQUIRED)
 
 # Find libtorrent-rasterbar
 find_package(PkgConfig REQUIRED)
@@ -95,6 +96,7 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${LIBTORRENT_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
+    ${CURL_INCLUDE_DIRS}
     ${toml11_SOURCE_DIR}
     ${GLIB_INCLUDE_DIRS}
 )
@@ -119,6 +121,7 @@ set(LEVIN_SOURCES
     src/statistics.cpp
     src/utils.cpp
     src/power_monitor.cpp
+    src/annas_archive.cpp
 )
 
 # Unified levin executable (daemon + CLI client)
@@ -128,6 +131,7 @@ target_link_libraries(levin
     ${Boost_LIBRARIES}
     ${LIBTORRENT_LIBRARIES}
     ${OPENSSL_LIBRARIES}
+    CURL::libcurl
     Threads::Threads
     spdlog::spdlog
     nlohmann_json::nlohmann_json

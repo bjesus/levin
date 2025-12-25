@@ -11,8 +11,11 @@ BuildRequires:  cmake >= 3.15
 BuildRequires:  gcc-c++ >= 9
 BuildRequires:  boost-devel >= 1.70
 BuildRequires:  openssl-devel
+BuildRequires:  libcurl-devel
 BuildRequires:  rb_libtorrent-devel >= 2.0
 BuildRequires:  pkgconfig
+BuildRequires:  rpm-build
+BuildRequires:  rpmdevtools
 BuildRequires:  systemd-rpm-macros
 
 %description

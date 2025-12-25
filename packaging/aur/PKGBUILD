@@ -1,13 +1,13 @@
 # Maintainer: bjesus <bjesus@users.noreply.github.com>
 
 pkgname=levin
-pkgver=0.2.2
+pkgver=0.3.0
 pkgrel=1
 pkgdesc='BitTorrent archive daemon for distributed content preservation'
 arch=('x86_64' 'aarch64')
 url='https://github.com/bjesus/levin'
 license=('MIT')
-depends=('boost-libs' 'openssl' 'libtorrent-rasterbar')
+depends=('boost-libs' 'openssl' 'curl' 'libtorrent-rasterbar')
 makedepends=('cmake' 'boost' 'gcc')
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/bjesus/levin/archive/v${pkgver}.tar.gz")
 sha256sums=('SKIP')  # Update this with actual checksum after release

@@ -11,8 +11,8 @@ android {
         applicationId = "com.yoavmoshe.levin"
         minSdk = 24
         targetSdk = 34
-        versionCode = 4
-        versionName = "0.2.2"
+        versionCode = 5
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,6 +71,9 @@ dependencies {
     implementation("org.libtorrent4j:libtorrent4j-android-arm64:$libtorrentVersion")
     implementation("org.libtorrent4j:libtorrent4j-android-x86:$libtorrentVersion")
     implementation("org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrentVersion")
+    
+    // HTTP client for Anna's Archive integration
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // Testing
     testImplementation("junit:junit:4.13.2")

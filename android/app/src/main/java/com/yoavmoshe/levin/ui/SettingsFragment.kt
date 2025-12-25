@@ -3,6 +3,7 @@ package com.yoavmoshe.levin.ui
 import android.os.Bundle
 import android.os.StatFs
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.preference.EditTextPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -224,5 +225,26 @@ class SettingsFragment : PreferenceFragmentCompat() {
         findPreference<Preference>("version")?.apply {
             summary = BuildConfig.VERSION_NAME
         }
+        
+        // Populate torrents button
+        findPreference<Preference>("populate_torrents")?.setOnPreferenceClickListener {
+            showPopulateTorrentsConfirmation()
+            true
+        }
+    }
+    
+    /**
+     * Show confirmation dialog before populating torrents
+     */
+    private fun showPopulateTorrentsConfirmation() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Add Torrents?")
+            .setMessage("This will download torrents from Anna's Archive. Any existing torrents will be kept.")
+            .setPositiveButton("Continue") { _, _ ->
+                // Call MainActivity's populate method
+                (activity as? MainActivity)?.startPopulatingTorrents()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 }

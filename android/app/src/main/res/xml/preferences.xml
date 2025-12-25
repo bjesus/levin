@@ -60,6 +60,17 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="Advanced">
+
+        <Preference
+            android:key="populate_torrents"
+            android:title="Add Anna's Archive Torrents"
+            android:summary="Automatically add torrents from Anna's Archive"
+            android:icon="@drawable/ic_notification" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/settings_about_category">
 
         <Preference
