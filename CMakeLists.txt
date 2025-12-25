@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(levin VERSION 0.2.0 LANGUAGES CXX)
+project(levin VERSION 0.2.2 LANGUAGES CXX)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -68,7 +68,9 @@ FetchContent_Declare(
     toml11
     GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
     GIT_TAG v3.8.1
+    EXCLUDE_FROM_ALL
 )
+set(TOML11_INSTALL OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(toml11)
 
 # spdlog - Fast logging library
