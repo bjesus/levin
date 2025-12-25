@@ -176,15 +176,15 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
       
-      - name: Build release APK (unsigned)
+      - name: Build debug APK
         run: |
           cd android
-          ./gradlew assembleRelease --stacktrace
+          ./gradlew assembleDebug --stacktrace
       
       - name: Rename APK with version
         run: |
           mkdir -p dist
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk \
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
              dist/levin-${{ github.ref_name }}-android.apk
       
       - name: Upload artifact
