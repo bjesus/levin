@@ -64,10 +64,27 @@ fi
 %license LICENSE
 %doc README.md
 %{_bindir}/levin
-%{_bindir}/levin
 %{_userunitdir}/levin.service
 
 %changelog
+* Wed Dec 25 2024 bjesus <bjesus@users.noreply.github.com> - 0.2.2-1
+- Fix RPM packaging and release workflow
+- Add missing systemd-rpm-macros dependency
+- Auto-update version from git tags
+
+* Wed Dec 25 2024 bjesus <bjesus@users.noreply.github.com> - 0.2.1-1
+- Android bug fixes
+- Fix lazy libtorrent session initialization
+- Fix default settings for better battery life
+- Fix version number display
+
+* Tue Dec 24 2024 bjesus <bjesus@users.noreply.github.com> - 0.2.0-1
+- Unified storage management across platforms
+- Add min_free and max_storage constraints
+- Support human-readable storage format
+- Enhanced Android statistics display
+- Boot receiver for auto-start on Android
+
 * Mon Dec 23 2024 bjesus <bjesus@users.noreply.github.com> - 0.1.0-1
 - Initial release
 - BitTorrent archive daemon with intelligent disk management

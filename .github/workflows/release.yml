@@ -71,7 +71,8 @@ jobs:
             rb_libtorrent-devel \
             pkgconfig \
             rpm-build \
-            rpmdevtools
+            rpmdevtools \
+            systemd-rpm-macros
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -79,9 +80,17 @@ jobs:
       - name: Set up RPM build tree
         run: |
           rpmdev-setuptree
-          cp packaging/rpm/levin.spec ~/rpmbuild/SPECS/
-          tar czf ~/rpmbuild/SOURCES/levin-${{ github.ref_name }}.tar.gz \
-            --transform "s,^,levin-${{ github.ref_name }}/," \
+          
+          # Extract version without 'v' prefix (e.g., v0.2.2 -> 0.2.2)
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          
+          # Update spec file with current version
+          sed "s/^Version:.*/Version:        $VERSION/" packaging/rpm/levin.spec > ~/rpmbuild/SPECS/levin.spec
+          
+          # Create source tarball with version (without 'v' prefix)
+          tar czf ~/rpmbuild/SOURCES/levin-$VERSION.tar.gz \
+            --transform "s,^,levin-$VERSION/," \
             --exclude='.git' \
             --exclude='build' \
             .
@@ -176,7 +185,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    needs: [build-debian, build-macos, build-android]
+    needs: [build-debian, build-rpm, build-macos, build-android]
     runs-on: ubuntu-latest
     if: always()
     
@@ -281,31 +290,3 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  update-aur:
-    name: Update AUR Package
-    needs: create-release
-    runs-on: ubuntu-latest
-    if: ${{ !contains(github.ref_name, 'rc') && !contains(github.ref_name, 'beta') }}
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Calculate SHA256
-        id: sha256
-        run: |
-          wget https://github.com/bjesus/levin/archive/${{ github.ref_name }}.tar.gz
-          SHA256=$(sha256sum ${{ github.ref_name }}.tar.gz | awk '{print $1}')
-          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
-
-      - name: Update PKGBUILD
-        run: |
-          sed -i "s/pkgver=.*/pkgver=${{ github.ref_name }}/" PKGBUILD
-          sed -i "s/sha256sums=.*/sha256sums=('${{ steps.sha256.outputs.sha256 }}')/" PKGBUILD
-
-      - name: Notify about AUR update
-        run: |
-          echo "::notice::AUR PKGBUILD needs manual update"
-          echo "::notice::New SHA256: ${{ steps.sha256.outputs.sha256 }}"
-          echo "::notice::Please update the AUR repository manually"
