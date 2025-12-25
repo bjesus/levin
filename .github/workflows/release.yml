@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-${{ matrix.ubuntu }}
     strategy:
       matrix:
-        ubuntu: ['20.04', '22.04', '24.04']
+        ubuntu: ['22.04', '24.04']
     
     steps:
       - name: Checkout code
