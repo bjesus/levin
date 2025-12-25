@@ -97,12 +97,21 @@ jobs:
 
       - name: Build RPM
         run: |
+          # Extract version without 'v' prefix
+          VERSION="${{ github.ref_name }}"
+          VERSION="${VERSION#v}"
+          
           cd ~/rpmbuild/SPECS
           rpmbuild -bb levin.spec
           mkdir -p $GITHUB_WORKSPACE/dist
-          cp ~/rpmbuild/RPMS/*/*.rpm $GITHUB_WORKSPACE/dist/
-          mv $GITHUB_WORKSPACE/dist/levin-*.rpm \
-             $GITHUB_WORKSPACE/dist/levin-${{ github.ref_name }}-fedora${{ matrix.fedora }}.x86_64.rpm
+          
+          # Rename RPMs with git tag (keeping v prefix for consistency with other artifacts)
+          for rpm in ~/rpmbuild/RPMS/*/*.rpm; do
+            filename=$(basename "$rpm")
+            # Replace version-release pattern with tag-fedora version
+            newname=$(echo "$filename" | sed "s/levin-$VERSION-1.fc${{ matrix.fedora }}/levin-${{ github.ref_name }}-fedora${{ matrix.fedora }}/")
+            cp "$rpm" "$GITHUB_WORKSPACE/dist/$newname"
+          done
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
