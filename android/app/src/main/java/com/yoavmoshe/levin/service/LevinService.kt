@@ -56,6 +56,7 @@ class LevinService : Service() {
     // State
     private var isRunning = false
     private var updateCounter = 0  // Counter for periodic lifetime saves
+    private var isStorageOverLimit = false  // Track if paused due to storage
     
     override fun onCreate() {
         super.onCreate()
@@ -218,12 +219,31 @@ class LevinService : Service() {
     private fun updateStats() {
         val sessionStats = sessionManager.getStats()
         
-        // Check storage limits
+        // Check storage limits - CRITICAL: Must enforce disk space limits
         val storageStatus = storageMonitor.getStatus()
         if (storageStatus.isOverBudget) {
             val deficitMb = storageStatus.deficitBytes / (1024 * 1024)
-            Log.w(TAG, "Storage budget exceeded by $deficitMb MB!")
-            // TODO: Pause downloads or delete old torrents
+            val usedMb = storageStatus.usedByLevinBytes / (1024 * 1024)
+            val maxMb = storageStatus.maxAllowedBytes?.let { it / (1024 * 1024) } ?: 0
+            Log.w(TAG, "Storage budget exceeded! Used: $usedMb MB, Max: $maxMb MB, Over by: $deficitMb MB")
+            
+            // CRITICAL: Pause downloads immediately when storage limit is exceeded
+            isStorageOverLimit = true
+            if (!sessionManager.isPaused) {
+                Log.w(TAG, "Pausing downloads due to storage limit violation")
+                handlePause()
+            }
+        } else {
+            // Storage is OK - clear the flag
+            if (isStorageOverLimit) {
+                Log.i(TAG, "Storage now within limits")
+                isStorageOverLimit = false
+                // Check if we should resume (only if all other conditions are met)
+                if (sessionManager.isPaused && shouldBeRunning()) {
+                    Log.i(TAG, "Storage OK and all conditions met - resuming downloads")
+                    handleResume()
+                }
+            }
         }
         
         // Calculate piece statistics from all torrents
@@ -281,22 +301,55 @@ class LevinService : Service() {
         notificationManager?.notify(NotificationHelper.NOTIFICATION_ID, notification)
     }
     
+    /**
+     * Check if all operating conditions are met to run
+     * Returns true if downloads should be active, false if should be paused
+     */
+    private fun shouldBeRunning(): Boolean {
+        // Check power condition
+        val isCharging = powerMonitor.isCharging()
+        val powerOk = settings.runOnBattery || isCharging
+        if (!powerOk) {
+            Log.d(TAG, "Power condition not met: charging=$isCharging, runOnBattery=${settings.runOnBattery}")
+            return false
+        }
+        
+        // Check network condition (we don't have a simple getter, so skip this check for now)
+        // The network monitor will call onNetworkTypeChanged when state changes
+        
+        // Check storage condition
+        if (isStorageOverLimit) {
+            Log.d(TAG, "Storage condition not met: over limit")
+            return false
+        }
+        
+        return true
+    }
+    
     private fun onPowerStateChanged(isCharging: Boolean) {
-        if (!settings.runOnBattery && !isCharging) {
-            Log.i(TAG, "On battery - pausing downloads")
-            handlePause()
-        } else if (isCharging && sessionManager.isPaused) {
-            Log.i(TAG, "On AC power - resuming downloads")
-            handleResume()
+        // Check all conditions and pause/resume appropriately
+        if (shouldBeRunning()) {
+            if (sessionManager.isPaused) {
+                Log.i(TAG, "All conditions met - resuming downloads")
+                handleResume()
+            }
+        } else {
+            if (!sessionManager.isPaused) {
+                Log.i(TAG, "Conditions not met - pausing downloads")
+                handlePause()
+            }
         }
     }
     
     private fun onNetworkTypeChanged(isWifi: Boolean, isCellular: Boolean) {
-        if (!settings.runOnCellular && isCellular) {
-            Log.i(TAG, "On cellular - pausing downloads")
+        // Pause if on cellular-only and cellular not allowed
+        val networkOk = isWifi || settings.runOnCellular
+        
+        if (!networkOk && !sessionManager.isPaused) {
+            Log.i(TAG, "On cellular network (runOnCellular=false) - pausing downloads")
             handlePause()
-        } else if (isWifi && sessionManager.isPaused) {
-            Log.i(TAG, "On WiFi - resuming downloads")
+        } else if (networkOk && sessionManager.isPaused && shouldBeRunning()) {
+            Log.i(TAG, "Network conditions met and all conditions OK - resuming downloads")
             handleResume()
         }
     }
