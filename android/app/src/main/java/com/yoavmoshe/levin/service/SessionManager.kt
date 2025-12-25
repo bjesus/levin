@@ -85,8 +85,14 @@ class LevinSessionManager(
      * Add a torrent from file
      */
     fun addTorrent(torrentFile: File): Boolean {
+        // Lazy-start session on first torrent add
+        if (session == null) {
+            Log.i(TAG, "First torrent detected, starting session now")
+            start()
+        }
+        
         val currentSession = session ?: run {
-            Log.e(TAG, "Cannot add torrent: session not started")
+            Log.e(TAG, "Cannot add torrent: session failed to start")
             return false
         }
         

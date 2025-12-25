@@ -9,7 +9,7 @@
             android:key="run_on_startup"
             android:title="@string/pref_run_on_startup"
             android:summary="@string/pref_run_on_startup_summary"
-            android:defaultValue="false" />
+            android:defaultValue="true" />
 
         <SwitchPreferenceCompat
             android:key="run_on_battery"
@@ -64,8 +64,7 @@
 
         <Preference
             android:key="version"
-            android:title="@string/pref_version"
-            android:summary="0.2.0" />
+            android:title="@string/pref_version" />
 
     </PreferenceCategory>
 

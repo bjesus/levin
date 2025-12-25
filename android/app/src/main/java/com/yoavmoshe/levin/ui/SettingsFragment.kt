@@ -4,8 +4,10 @@ import android.os.Bundle
 import android.os.StatFs
 import android.widget.Toast
 import androidx.preference.EditTextPreference
+import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
+import com.yoavmoshe.levin.BuildConfig
 import com.yoavmoshe.levin.R
 import com.yoavmoshe.levin.data.SettingsRepository
 
@@ -216,6 +218,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 settingsRepo.save(currentSettings.copy(runOnCellular = newValue as Boolean))
                 true
             }
+        }
+        
+        // Set version from BuildConfig (single source of truth)
+        findPreference<Preference>("version")?.apply {
+            summary = BuildConfig.VERSION_NAME
         }
     }
 }

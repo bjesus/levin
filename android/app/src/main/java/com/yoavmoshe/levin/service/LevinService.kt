@@ -121,10 +121,11 @@ class LevinService : Service() {
         val notification = buildNotification()
         startForeground(NotificationHelper.NOTIFICATION_ID, notification)
         
-        // Start libtorrent session
-        sessionManager.start()
+        // Don't start libtorrent session yet - will start lazily when first torrent is added
+        // This prevents unnecessary network connections when there are no torrents
         
         // Scan for existing torrents and add them
+        // (This will start the session if torrents are found)
         scanAndAddTorrents()
         
         // Start power monitor

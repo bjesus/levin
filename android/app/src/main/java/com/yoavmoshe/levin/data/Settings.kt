@@ -14,9 +14,9 @@ data class LevinSettings(
     val maxStorage: Long? = null, // OPTIONAL - null = unlimited (maximum storage Levin can use)
     
     // Power & Network
-    val runOnStartup: Boolean = false,  // Run on device boot
-    val runOnBattery: Boolean = true,  // Changed default to true for better UX
-    val runOnCellular: Boolean = true,  // Changed default to true for better UX
+    val runOnStartup: Boolean = true,   // Run on device boot (default enabled)
+    val runOnBattery: Boolean = false,  // Don't run on battery by default
+    val runOnCellular: Boolean = false, // Don't run on cellular by default
     
     // BitTorrent settings (from desktop, not exposed in UI yet)
     val listenPort: Int = 6881,
