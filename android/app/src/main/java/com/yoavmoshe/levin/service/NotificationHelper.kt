@@ -9,6 +9,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.yoavmoshe.levin.R
+import com.yoavmoshe.levin.state.LevinState
 import com.yoavmoshe.levin.ui.MainActivity
 import com.yoavmoshe.levin.util.FormatUtils
 
@@ -44,24 +45,22 @@ class NotificationHelper(private val context: Context) {
     }
     
     /**
-     * Build notification with current stats
+     * Build notification with current stats based on state
      */
     fun buildNotification(
+        state: LevinState,
         downloadRate: Long,
         uploadRate: Long,
-        torrentCount: Int,
-        isPaused: Boolean
+        torrentCount: Int
     ): Notification {
-        val title = if (isPaused) {
-            context.getString(R.string.notification_title_paused)
-        } else {
-            context.getString(R.string.notification_title_running)
-        }
+        val title = state.notificationTitle()
         
-        val text = if (isPaused) {
-            "Paused"
-        } else {
-            "⬇ ${FormatUtils.formatSpeed(downloadRate)}  $torrentCount active"
+        val text = when (state) {
+            LevinState.OFF -> "Off"  // Should never show notification in OFF state
+            LevinState.PAUSED -> "Paused"  // Should never show notification in PAUSED state
+            LevinState.IDLE -> "No torrents"
+            LevinState.SEEDING -> "⬆ ${FormatUtils.formatSpeed(uploadRate)} (storage limit reached)"
+            LevinState.DOWNLOADING -> "⬇ ${FormatUtils.formatSpeed(downloadRate)}  ⬆ ${FormatUtils.formatSpeed(uploadRate)}  $torrentCount active"
         }
         
         // Intent to open main activity when notification is tapped
@@ -73,37 +72,12 @@ class NotificationHelper(private val context: Context) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
         
-        // Intent for pause/resume action
-        val actionIntent = Intent(context, LevinService::class.java).apply {
-            action = if (isPaused) LevinService.ACTION_RESUME else LevinService.ACTION_PAUSE
-        }
-        val actionPendingIntent = PendingIntent.getService(
-            context,
-            1,
-            actionIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        
-        val actionText = if (isPaused) {
-            context.getString(R.string.action_resume)
-        } else {
-            context.getString(R.string.action_pause)
-        }
-        
-        // TODO: Add proper icons for pause/resume actions
-        val actionIcon = if (isPaused) {
-            android.R.drawable.ic_media_play
-        } else {
-            android.R.drawable.ic_media_pause
-        }
-        
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)  // Can't be dismissed by swipe
             .setContentIntent(openPendingIntent)
-            .addAction(actionIcon, actionText, actionPendingIntent)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

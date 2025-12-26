@@ -1,5 +1,6 @@
 package com.yoavmoshe.levin.data
 
+import com.yoavmoshe.levin.state.LevinState
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -23,7 +24,7 @@ data class Statistics(
     val sessionUploadRate: Long = 0,   // bytes/sec
     val activeTorrents: Int = 0,
     val peerCount: Int = 0,
-    val isPaused: Boolean = false,
+    val state: LevinState = LevinState.OFF,
     
     // Disk usage stats
     val diskUsedBytes: Long = 0,
@@ -87,7 +88,7 @@ data class Statistics(
         uploadRate: Long,
         torrents: Int,
         peers: Int,
-        paused: Boolean,
+        currentState: LevinState,
         diskUsed: Long = diskUsedBytes,
         diskFree: Long = diskFreeBytes,
         piecesHave: Int = this.piecesHave,
@@ -100,7 +101,7 @@ data class Statistics(
             sessionUploadRate = uploadRate,
             activeTorrents = torrents,
             peerCount = peers,
-            isPaused = paused,
+            state = currentState,
             diskUsedBytes = diskUsed,
             diskFreeBytes = diskFree,
             piecesHave = piecesHave,

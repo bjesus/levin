@@ -7,11 +7,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.google.android.material.button.MaterialButton
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textview.MaterialTextView
 import com.yoavmoshe.levin.R
+import com.yoavmoshe.levin.data.SettingsRepository
 import com.yoavmoshe.levin.data.StatisticsRepository
 import com.yoavmoshe.levin.service.LevinService
+import com.yoavmoshe.levin.state.LevinState
 import com.yoavmoshe.levin.util.FormatUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -23,13 +25,13 @@ import kotlinx.coroutines.launch
 class StatsFragment : Fragment() {
     
     private lateinit var statsRepo: StatisticsRepository
+    private lateinit var settingsRepo: SettingsRepository
     
     // Status card views
     private lateinit var statusText: MaterialTextView
     private lateinit var currentSpeed: MaterialTextView
     private lateinit var activeTorrentsStatus: MaterialTextView
-    private lateinit var pauseResumeButton: MaterialButton
-    private lateinit var reloadButton: MaterialButton
+    private lateinit var enableToggle: SwitchMaterial
     
     // Stats views (combined table)
     private lateinit var downloaded: MaterialTextView
@@ -54,15 +56,17 @@ class StatsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        // Initialize repository
+        // Initialize repositories
         statsRepo = StatisticsRepository(requireContext())
+        settingsRepo = SettingsRepository(requireContext())
         
         // Bind status card views
         statusText = view.findViewById(R.id.status_text)
         currentSpeed = view.findViewById(R.id.current_speed)
         activeTorrentsStatus = view.findViewById(R.id.active_torrents_status)
-        pauseResumeButton = view.findViewById(R.id.pause_resume_button)
-        reloadButton = view.findViewById(R.id.reload_button)
+        
+        // Bind toggle from toolbar (in parent activity)
+        enableToggle = requireActivity().findViewById(R.id.toolbar_enable_toggle)
         
         // Bind stats views (combined table)
         downloaded = view.findViewById(R.id.downloaded)
@@ -76,24 +80,15 @@ class StatsFragment : Fragment() {
         peers = view.findViewById(R.id.peers)
         pieces = view.findViewById(R.id.pieces)
         
-        // Setup button listeners
-        pauseResumeButton.setOnClickListener {
-            val stats = statsRepo.load()
-            val action = if (stats.isPaused) {
-                LevinService.ACTION_RESUME
+        // Setup toggle listener
+        enableToggle.setOnCheckedChangeListener { _, isChecked ->
+            val action = if (isChecked) {
+                LevinService.ACTION_ENABLE
             } else {
-                LevinService.ACTION_PAUSE
+                LevinService.ACTION_DISABLE
             }
             val intent = Intent(requireContext(), LevinService::class.java).apply {
                 this.action = action
-            }
-            requireContext().startService(intent)
-        }
-        
-        reloadButton.setOnClickListener {
-            // Send intent to service to reload torrents
-            val intent = Intent(requireContext(), LevinService::class.java).apply {
-                action = "com.yoavmoshe.levin.RELOAD_TORRENTS"
             }
             requireContext().startService(intent)
         }
@@ -111,24 +106,48 @@ class StatsFragment : Fragment() {
         }
     }
     
-    private fun updateStats() {
-        val stats = statsRepo.load()
-        
-        // Update status card
-        // Priority: 1) Check if paused first, 2) Then check if no torrents
-        if (stats.isPaused) {
-            statusText.text = "Paused"
-        } else if (stats.activeTorrents == 0) {
-            statusText.text = "No Active Torrents"
-        } else {
-            statusText.text = "Running"
+    private suspend fun updateStats() {
+        // Load data on background thread to avoid ANR
+        val stats = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            statsRepo.load()
+        }
+        val settings = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            settingsRepo.load()
         }
         
-        currentSpeed.text = "⬇ ${FormatUtils.formatSpeed(stats.sessionDownloadRate)}  ⬆ ${FormatUtils.formatSpeed(stats.sessionUploadRate)}"
+        // Update toggle state (without triggering listener)
+        enableToggle.setOnCheckedChangeListener(null)
+        enableToggle.isChecked = settings.enabled
+        enableToggle.setOnCheckedChangeListener { _, isChecked ->
+            val action = if (isChecked) {
+                LevinService.ACTION_ENABLE
+            } else {
+                LevinService.ACTION_DISABLE
+            }
+            val intent = Intent(requireContext(), LevinService::class.java).apply {
+                this.action = action
+            }
+            requireContext().startService(intent)
+        }
+        
+        // Update status text based on state
+        statusText.text = when (stats.state) {
+            LevinState.OFF -> "Off"
+            LevinState.PAUSED -> "Paused"
+            LevinState.IDLE -> "No Torrents"
+            LevinState.SEEDING -> "Seeding (Storage Limit)"
+            LevinState.DOWNLOADING -> "Downloading"
+        }
+        
+        // Update speed display based on state
+        currentSpeed.text = when (stats.state) {
+            LevinState.OFF, LevinState.PAUSED -> ""
+            LevinState.IDLE -> "No active torrents"
+            LevinState.SEEDING -> "⬆ ${FormatUtils.formatSpeed(stats.sessionUploadRate)} (downloads paused)"
+            LevinState.DOWNLOADING -> "⬇ ${FormatUtils.formatSpeed(stats.sessionDownloadRate)}  ⬆ ${FormatUtils.formatSpeed(stats.sessionUploadRate)}"
+        }
         
         activeTorrentsStatus.text = "${stats.activeTorrents} active torrent${if (stats.activeTorrents != 1) "s" else ""}"
-        
-        pauseResumeButton.text = if (stats.isPaused) "Resume" else "Pause"
         
         // Session stats (combined table)
         downloaded.text = FormatUtils.formatSize(stats.sessionDownloaded)

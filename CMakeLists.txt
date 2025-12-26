@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(levin VERSION 0.3.0 LANGUAGES CXX)
+project(levin VERSION 0.3.4 LANGUAGES CXX)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -122,6 +122,7 @@ set(LEVIN_SOURCES
     src/utils.cpp
     src/power_monitor.cpp
     src/annas_archive.cpp
+    src/state_machine.cpp
 )
 
 # Unified levin executable (daemon + CLI client)

@@ -17,6 +17,7 @@ class SettingsRepository(private val context: Context) {
         private const val PREFS_NAME = "levin_settings"
         
         // Keys
+        private const val KEY_ENABLED = "enabled"
         private const val KEY_DATA_DIR = "data_directory"
         private const val KEY_WATCH_DIR = "watch_directory"
         private const val KEY_MIN_FREE = "min_free"
@@ -32,10 +33,11 @@ class SettingsRepository(private val context: Context) {
     }
     
     /**
-     * Save settings to SharedPreferences
+     * Save settings to SharedPreferences and broadcast change notification
      */
     fun save(settings: LevinSettings) {
         prefs.edit().apply {
+            putBoolean(KEY_ENABLED, settings.enabled)
             putString(KEY_DATA_DIR, settings.dataDirectory.absolutePath)
             putString(KEY_WATCH_DIR, settings.watchDirectory.absolutePath)
             putLong(KEY_MIN_FREE, settings.minFree)
@@ -54,6 +56,13 @@ class SettingsRepository(private val context: Context) {
             putBoolean(KEY_ENABLE_LSD, settings.enableLsd)
             apply()
         }
+        
+        // Broadcast settings change to service
+        android.util.Log.i("SettingsRepository", "Broadcasting settings change")
+        val intent = android.content.Intent("com.yoavmoshe.levin.SETTINGS_CHANGED")
+        intent.setPackage(context.packageName)
+        context.sendBroadcast(intent)
+        android.util.Log.i("SettingsRepository", "Broadcast sent")
     }
     
     /**
@@ -71,6 +80,8 @@ class SettingsRepository(private val context: Context) {
         }
         
         return LevinSettings(
+            enabled = prefs.getBoolean(KEY_ENABLED,
+                defaultSettings.enabled),
             dataDirectory = File(prefs.getString(KEY_DATA_DIR, 
                 defaultSettings.dataDirectory.absolutePath)!!),
             watchDirectory = File(prefs.getString(KEY_WATCH_DIR,

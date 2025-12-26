@@ -175,10 +175,12 @@ json CLIServer::handle_status() {
     }
 
     bool paused_for_battery = paused_for_battery_callback_ ? paused_for_battery_callback_() : false;
+    LevinState current_state = get_state_callback_ ? get_state_callback_() : LevinState::OFF;
     
     return {
         {"success", true},
         {"data", {
+            {"state", state_to_string(current_state)},
             {"paused_for_battery", paused_for_battery},
             {"disk", {
                 {"total_bytes", space_status.total_bytes},
@@ -322,6 +324,10 @@ void CLIServer::set_resume_callback(std::function<void()> callback) {
 
 void CLIServer::set_paused_for_battery_callback(std::function<bool()> callback) {
     paused_for_battery_callback_ = callback;
+}
+
+void CLIServer::set_get_state_callback(std::function<LevinState()> callback) {
+    get_state_callback_ = callback;
 }
 
 void CLIServer::set_terminate_callback(std::function<void()> callback) {

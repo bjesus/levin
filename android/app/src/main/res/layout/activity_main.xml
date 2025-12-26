@@ -17,7 +17,17 @@
         app:logoAdjustViewBounds="true"
         app:title="Levin"
         app:titleMarginStart="24dp"
-        app:contentInsetStartWithNavigation="72dp" />
+        app:contentInsetStartWithNavigation="72dp">
+        
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/toolbar_enable_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginEnd="16dp"
+            android:checked="true" />
+            
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <androidx.fragment.app.FragmentContainerView
         android:id="@+id/nav_host_fragment"

@@ -285,6 +285,26 @@ class LevinSessionManager(
     }
     
     /**
+     * Remove torrent by its data directory
+     * The directory name is expected to be the torrent info hash
+     */
+    fun removeTorrentByPath(dir: File) {
+        // Directory name should match the info hash
+        val dirName = dir.name
+        val handle = torrents[dirName]
+        
+        if (handle != null) {
+            Log.i(TAG, "Removing torrent from session: $dirName")
+            try {
+                session?.remove(handle)
+                torrents.remove(dirName)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error removing torrent", e)
+            }
+        }
+    }
+    
+    /**
      * Stop the session and cleanup
      */
     fun stop() {

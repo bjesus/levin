@@ -1,15 +1,25 @@
 package com.yoavmoshe.levin.monitoring
 
+import android.app.usage.StorageStatsManager
+import android.content.Context
+import android.os.Build
 import android.os.StatFs
+import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import android.util.Log
 import com.yoavmoshe.levin.data.LevinSettings
 import java.io.File
+import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 /**
  * Monitor storage usage and enforce limits
  * Ported from desktop disk_monitor.cpp
  */
-class StorageMonitor(private val settings: LevinSettings) {
+class StorageMonitor(
+    private val context: Context,
+    private val settings: LevinSettings
+) {
     
     companion object {
         private const val TAG = "StorageMonitor"
@@ -40,19 +50,29 @@ class StorageMonitor(private val settings: LevinSettings) {
         val totalBytes = stat.totalBytes
         val freeBytes = stat.availableBytes
         
-        // Calculate space used by Levin
-        val usedByLevin = calculateDirectorySize(dataDir)
+        // Calculate actual space used by Levin (handles sparse files correctly)
+        val usedByLevin = calculateActualDiskUsage(dataDir)
         
         // Calculate available space respecting minimum free
         val minRequired = settings.minFree
         val availableSpace = (freeBytes - minRequired).coerceAtLeast(0)
         
         // Calculate budget respecting both constraints
-        val budget = if (settings.maxStorage != null) {
+        val rawBudget = if (settings.maxStorage != null) {
             val availableForLevin = (settings.maxStorage - usedByLevin).coerceAtLeast(0)
             minOf(availableSpace, availableForLevin)
         } else {
             availableSpace
+        }
+        
+        // Apply 50MB hysteresis to prevent download-delete thrashing
+        val HYSTERESIS_BYTES = 50L * 1024 * 1024  // 50 MB
+        val budget = if (rawBudget > HYSTERESIS_BYTES) {
+            rawBudget - HYSTERESIS_BYTES
+        } else if (rawBudget > 0) {
+            0
+        } else {
+            rawBudget
         }
         
         // Determine if over budget
@@ -60,7 +80,6 @@ class StorageMonitor(private val settings: LevinSettings) {
             budget <= 0 -> true
             settings.maxStorage != null && usedByLevin >= settings.maxStorage -> true
             freeBytes < minRequired -> true
-            usedByLevin > 0 && usedByLevin > budget -> true
             else -> false
         }
         
@@ -69,8 +88,6 @@ class StorageMonitor(private val settings: LevinSettings) {
                 usedByLevin - settings.maxStorage
             freeBytes < minRequired ->
                 minRequired - freeBytes
-            usedByLevin > budget ->
-                usedByLevin - budget
             else -> 0L
         }
         
@@ -95,28 +112,75 @@ class StorageMonitor(private val settings: LevinSettings) {
     }
     
     /**
-     * Calculate total size of directory (recursively)
+     * Calculate actual disk usage for external files directory
+     * Uses StorageStatsManager API on Android 8.0+ for accurate stats (handles sparse files correctly)
      */
-    private fun calculateDirectorySize(dir: File): Long {
+    private fun calculateActualDiskUsage(dir: File): Long {
         if (!dir.exists()) {
+            Log.w(TAG, "Directory does not exist: ${dir.absolutePath}")
             return 0
         }
         
-        return try {
-            dir.walkTopDown()
-                .filter { it.isFile }
-                .mapNotNull { file ->
-                    try {
-                        file.length()
-                    } catch (e: SecurityException) {
-                        Log.w(TAG, "Cannot read file size: ${file.path}")
-                        null
-                    }
+        Log.d(TAG, "Calculating disk usage for: ${dir.absolutePath}")
+        
+        // Use StorageStatsManager on API 26+ (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                val storageStatsManager = context.getSystemService(StorageStatsManager::class.java)
+                val storageManager = context.getSystemService(StorageManager::class.java)
+                
+                // Get the storage volume for external files directory
+                val storageVolume: StorageVolume? = storageManager?.getStorageVolume(dir)
+                val uuid: UUID = if (storageVolume != null && storageVolume.uuid != null) {
+                    UUID.fromString(storageVolume.uuid)
+                } else {
+                    StorageManager.UUID_DEFAULT
                 }
-                .sum()
+                
+                // Query external storage stats for our app
+                val stats = storageStatsManager?.queryExternalStatsForUser(uuid, android.os.Process.myUserHandle())
+                
+                if (stats != null) {
+                    Log.d(TAG, "External storage usage via StorageStatsManager: ${stats.totalBytes / (1024 * 1024)} MB")
+                    return stats.totalBytes
+                }
+                
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get storage stats via StorageStatsManager, falling back", e)
+                // Fall through to fallback method
+            }
+        }
+        
+        // Fallback for API < 26 or if StorageStatsManager fails
+        return calculateDiskUsageViaShell(dir)
+    }
+    
+    /**
+     * Fallback method using shell du command
+     * Uses 'du -s' (without -b) to get actual block usage, not apparent size
+     * Only used on API < 26 or if StorageStatsManager fails
+     */
+    private fun calculateDiskUsageViaShell(dir: File): Long {
+        return try {
+            // Use 'du -s' (without -b) to get actual disk blocks, not logical size
+            // This handles sparse files correctly
+            val process = Runtime.getRuntime().exec(arrayOf("du", "-s", dir.absolutePath))
+            val output = process.inputStream.bufferedReader().use { it.readText() }
+            val completed = process.waitFor(10, TimeUnit.SECONDS)
+            
+            if (!completed || process.exitValue() != 0) {
+                Log.w(TAG, "du command failed or timed out")
+                return 0L
+            }
+            
+            // Parse: "12345\t/path" where 12345 is in KB
+            val sizeInKB = output.trim().split(Regex("\\s+")).firstOrNull()?.toLongOrNull() ?: 0L
+            val sizeInBytes = sizeInKB * 1024
+            Log.d(TAG, "Disk usage via shell: ${sizeInBytes / (1024 * 1024)} MB")
+            sizeInBytes
         } catch (e: Exception) {
-            Log.e(TAG, "Error calculating directory size", e)
-            0
+            Log.e(TAG, "Failed to calculate disk usage via shell", e)
+            0L
         }
     }
     

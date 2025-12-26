@@ -8,6 +8,7 @@
 #include "piece_manager.hpp"
 #include "cli_server.hpp"
 #include "power_monitor.hpp"
+#include "state_machine.hpp"
 #include "utils.hpp"
 #include <unistd.h>
 #include <sys/stat.h>
@@ -152,6 +153,11 @@ bool Daemon::initialize_components() {
     // Initialize statistics
     statistics_ = std::make_unique<Statistics>(config_);
     statistics_->load();
+    
+    // Initialize state machine (but don't enable yet - wait until all components are ready)
+    state_machine_ = std::make_unique<StateMachine>([this](LevinState old_state, LevinState new_state) {
+        handle_state_transition(old_state, new_state);
+    });
 
     // Initialize disk monitor
     disk_monitor_ = std::make_unique<DiskMonitor>(config_);
@@ -170,11 +176,15 @@ bool Daemon::initialize_components() {
     watcher_->set_torrent_added_callback([this](const std::string& path) {
         LOG_INFO("New torrent detected: {}", path);
         session_->add_torrent(path);
+        // Update torrent count in state machine
+        update_torrent_count();
     });
 
     watcher_->set_torrent_removed_callback([this](const std::string& path) {
         LOG_INFO("Torrent removed: {}", path);
         // TODO: Remove from session (need to track path -> info_hash mapping)
+        // Update torrent count in state machine
+        update_torrent_count();
     });
 
     if (!watcher_->start()) {
@@ -212,7 +222,11 @@ bool Daemon::initialize_components() {
     });
     
     cli_server_->set_paused_for_battery_callback([this]() {
-        return paused_for_battery_.load();
+        return state_machine_->get_state() == LevinState::PAUSED;
+    });
+    
+    cli_server_->set_get_state_callback([this]() {
+        return state_machine_->get_state();
     });
     
     cli_server_->set_terminate_callback([this]() {
@@ -234,31 +248,28 @@ bool Daemon::initialize_components() {
     if (!config_.daemon.run_on_battery) {
         power_monitor_ = std::make_unique<PowerMonitor>();
         power_monitor_->start([this](bool on_ac_power) {
-            if (on_ac_power) {
-                // Plugged into AC - resume if we were paused for battery
-                if (paused_for_battery_) {
-                    LOG_INFO("AC power detected - resuming");
-                    paused_for_battery_ = false;
-                    session_->resume();
-                }
-            } else {
-                // Running on battery - pause entire session
-                if (!paused_for_battery_) {
-                    LOG_INFO("Battery power detected - pausing all network activity");
-                    paused_for_battery_ = true;
-                    session_->pause();
-                }
-            }
+            // Update state machine: battery allows if on AC OR runOnBattery is true
+            bool battery_allows = on_ac_power || config_.daemon.run_on_battery;
+            state_machine_->update_battery_condition(battery_allows);
         });
         
-        // Check initial state and pause if needed
-        if (!power_monitor_->is_on_ac_power()) {
-            LOG_INFO("Starting on battery power - pausing all network activity");
-            paused_for_battery_ = true;
-            session_->pause();
-        }
+        // Set initial battery condition
+        bool initial_on_ac = power_monitor_->is_on_ac_power();
+        bool battery_allows = initial_on_ac || config_.daemon.run_on_battery;
+        state_machine_->update_battery_condition(battery_allows);
+    } else {
+        // runOnBattery=true, so battery always allows
+        state_machine_->update_battery_condition(true);
     }
 
+    // Update all state machine conditions before enabling
+    // This ensures the initial state transition has accurate condition values
+    update_all_conditions();
+    
+    // Enable state machine now that all components are ready and conditions are set
+    // On desktop, daemon running = enabled (no separate config flag needed)
+    state_machine_->set_enabled(true);
+    
     LOG_INFO("All components initialized successfully");
     return true;
 }
@@ -307,19 +318,21 @@ void Daemon::run() {
         // Rebalance disk usage periodically (every minute)
         auto rebalance_interval = std::chrono::seconds(60);
         if (now - last_rebalance_ >= rebalance_interval) {
-            // Update metrics to get accurate disk usage (but don't rebuild queues)
+            // Update metrics (but don't rebuild queues)
             piece_manager_->update_metrics();
             
-            // Update current disk usage
-            uint64_t total_data = piece_manager_->get_total_data_size();
-            disk_monitor_->set_current_usage(total_data);
-            
-            // Check space and rebalance
+            // Check space and rebalance (disk monitor calculates usage internally)
             auto status = disk_monitor_->check_space();
             LOG_INFO("Disk usage: {} / {} (budget: {})",
-                     utils::format_bytes(total_data),
+                     utils::format_bytes(status.current_usage_bytes),
                      utils::format_bytes(status.total_bytes),
                      utils::format_bytes(status.budget_bytes));
+            
+            // Update state machine storage condition
+            state_machine_->update_storage_condition(!status.over_budget);
+            
+            // Update torrent count
+            update_torrent_count();
             
             piece_manager_->rebalance_disk_usage();
             last_rebalance_ = now;
@@ -359,6 +372,71 @@ void Daemon::run() {
 void Daemon::shutdown() {
     LOG_INFO("Shutdown requested");
     running_ = false;
+}
+
+void Daemon::handle_state_transition(LevinState old_state, LevinState new_state) {
+    LOG_INFO("Handling state transition: {} → {}", 
+             state_to_string(old_state), state_to_string(new_state));
+    
+    switch (new_state) {
+        case LevinState::OFF:
+            // User disabled - stop everything (desktop: never happens, daemon running = enabled)
+            session_->pause();
+            break;
+            
+        case LevinState::PAUSED:
+            // Waiting for conditions (battery) - stop session
+            session_->pause();
+            break;
+            
+        case LevinState::IDLE:
+            // No torrents - session running
+            session_->resume();
+            break;
+            
+        case LevinState::SEEDING:
+            // Storage full - pause downloads only
+            LOG_INFO("Pausing downloads (storage limit)");
+            piece_manager_->emergency_pause_downloads();
+            session_->resume();
+            break;
+            
+        case LevinState::DOWNLOADING:
+            // Normal operation - full speed
+            session_->resume();
+            // Resume downloads if they were paused for storage
+            piece_manager_->rebuild_queues();
+            break;
+    }
+}
+
+void Daemon::update_all_conditions() {
+    // Battery condition
+    bool battery_allows = true;  // Default to allowed
+    if (power_monitor_ && !config_.daemon.run_on_battery) {
+        battery_allows = power_monitor_->is_on_ac_power();
+    }
+    state_machine_->update_battery_condition(battery_allows);
+    
+    // Network condition (desktop always has network)
+    state_machine_->update_network_condition(true);
+    
+    // Torrent count
+    update_torrent_count();
+    
+    // Storage condition
+    auto status = disk_monitor_->check_space();
+    bool storage_allows = !status.over_budget;
+    state_machine_->update_storage_condition(storage_allows);
+    
+    // Force recomputation
+    state_machine_->recompute();
+}
+
+void Daemon::update_torrent_count() {
+    auto torrents = session_->get_torrents();
+    bool has_torrents = !torrents.empty();
+    state_machine_->update_has_torrents(has_torrents);
 }
 
 } // namespace levin

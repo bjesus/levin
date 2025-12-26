@@ -3,6 +3,7 @@
 #include <string>
 #include <functional>
 #include <nlohmann/json.hpp>
+#include "state_machine.hpp"
 
 namespace levin {
 
@@ -59,6 +60,11 @@ public:
     void set_paused_for_battery_callback(std::function<bool()> callback);
     
     /**
+     * Set callback to get current state.
+     */
+    void set_get_state_callback(std::function<LevinState()> callback);
+    
+    /**
      * Set callback for terminate command.
      */
     void set_terminate_callback(std::function<void()> callback);
@@ -77,6 +83,7 @@ private:
     std::function<void()> pause_callback_;
     std::function<void()> resume_callback_;
     std::function<bool()> paused_for_battery_callback_;
+    std::function<LevinState()> get_state_callback_;
     std::function<void()> terminate_callback_;
 
     /**

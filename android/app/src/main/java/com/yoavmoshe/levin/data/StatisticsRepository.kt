@@ -2,6 +2,7 @@ package com.yoavmoshe.levin.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.yoavmoshe.levin.state.LevinState
 
 /**
  * Repository for persisting statistics.
@@ -27,7 +28,7 @@ class StatisticsRepository(private val context: Context) {
         private const val KEY_SESSION_UPLOAD_RATE = "session_upload_rate"
         private const val KEY_ACTIVE_TORRENTS = "active_torrents"
         private const val KEY_PEER_COUNT = "peer_count"
-        private const val KEY_IS_PAUSED = "is_paused"
+        private const val KEY_STATE = "state"
         private const val KEY_SESSION_START_TIME = "session_start_time"
         
         // Keys for disk usage stats
@@ -43,6 +44,13 @@ class StatisticsRepository(private val context: Context) {
      * Load statistics from storage (both lifetime and session stats)
      */
     fun load(): Statistics {
+        val stateOrdinal = prefs.getInt(KEY_STATE, LevinState.OFF.ordinal)
+        val state = try {
+            LevinState.values()[stateOrdinal]
+        } catch (e: Exception) {
+            LevinState.OFF
+        }
+        
         return Statistics(
             // Lifetime stats
             lifetimeDownloaded = prefs.getLong(KEY_LIFETIME_DOWNLOADED, 0),
@@ -55,7 +63,7 @@ class StatisticsRepository(private val context: Context) {
             sessionUploadRate = prefs.getLong(KEY_SESSION_UPLOAD_RATE, 0),
             activeTorrents = prefs.getInt(KEY_ACTIVE_TORRENTS, 0),
             peerCount = prefs.getInt(KEY_PEER_COUNT, 0),
-            isPaused = prefs.getBoolean(KEY_IS_PAUSED, false),
+            state = state,
             sessionStartTime = prefs.getLong(KEY_SESSION_START_TIME, System.currentTimeMillis()),
             // Disk usage stats
             diskUsedBytes = prefs.getLong(KEY_DISK_USED_BYTES, 0),
@@ -82,7 +90,7 @@ class StatisticsRepository(private val context: Context) {
             putLong(KEY_SESSION_UPLOAD_RATE, stats.sessionUploadRate)
             putInt(KEY_ACTIVE_TORRENTS, stats.activeTorrents)
             putInt(KEY_PEER_COUNT, stats.peerCount)
-            putBoolean(KEY_IS_PAUSED, stats.isPaused)
+            putInt(KEY_STATE, stats.state.ordinal)
             putLong(KEY_SESSION_START_TIME, stats.sessionStartTime)
             // Disk usage stats
             putLong(KEY_DISK_USED_BYTES, stats.diskUsedBytes)

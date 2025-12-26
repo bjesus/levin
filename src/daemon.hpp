@@ -15,6 +15,8 @@ class Statistics;
 class PieceManager;
 class CLIServer;
 class PowerMonitor;
+class StateMachine;
+enum class LevinState;
 
 /**
  * Main daemon class that handles:
@@ -64,9 +66,7 @@ private:
     std::unique_ptr<PieceManager> piece_manager_;
     std::unique_ptr<CLIServer> cli_server_;
     std::unique_ptr<PowerMonitor> power_monitor_;
-    
-    // Power state
-    std::atomic<bool> paused_for_battery_{false};
+    std::unique_ptr<StateMachine> state_machine_;
 
     // Timers for periodic tasks
     std::chrono::steady_clock::time_point last_disk_check_;
@@ -98,6 +98,22 @@ private:
      * Close standard file descriptors (stdin, stdout, stderr).
      */
     void close_standard_fds();
+    
+    /**
+     * Handle state transitions
+     * Called by state machine when state changes
+     */
+    void handle_state_transition(LevinState old_state, LevinState new_state);
+    
+    /**
+     * Update all state machine conditions
+     */
+    void update_all_conditions();
+    
+    /**
+     * Update torrent count in state machine
+     */
+    void update_torrent_count();
 };
 
 } // namespace levin

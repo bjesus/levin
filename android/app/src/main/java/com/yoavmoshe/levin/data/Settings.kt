@@ -7,6 +7,9 @@ import java.io.File
  * Levin app settings - mirrors desktop config.hpp structure
  */
 data class LevinSettings(
+    // Master on/off toggle
+    val enabled: Boolean = true,        // Master switch - persists across restarts
+    
     // Storage
     val dataDirectory: File,
     val watchDirectory: File,

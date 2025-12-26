@@ -6,6 +6,7 @@
 #include "utils.hpp"
 #include <libtorrent/torrent_status.hpp>
 #include <algorithm>
+#include <filesystem>
 
 namespace lt = libtorrent;
 
@@ -284,59 +285,64 @@ void PieceManager::download_pieces(uint64_t available_bytes) {
 }
 
 void PieceManager::delete_pieces(uint64_t bytes_to_free) {
-    if (deletion_queue_.empty()) {
-        LOG_WARN("No pieces available to delete!");
+    LOG_WARN("Need to free {} to meet storage requirements", 
+             utils::format_bytes(bytes_to_free));
+    
+    // Get the data directory from config
+    std::filesystem::path data_dir = config_.paths.data_directory;
+    if (!std::filesystem::exists(data_dir)) {
+        LOG_WARN("Data directory doesn't exist: {}", data_dir.string());
         return;
     }
     
-    uint64_t freed = 0;
-    int pieces_deleted = 0;
+    // Collect all files in the data directory with their sizes and modification times
+    std::vector<std::tuple<std::filesystem::path, uint64_t, std::filesystem::file_time_type>> files;
     
-    // Make a copy to iterate
-    std::priority_queue<PieceInfo> temp_queue = deletion_queue_;
-    
-    while (!temp_queue.empty() && freed < bytes_to_free) {
-        PieceInfo piece = temp_queue.top();
-        temp_queue.pop();
-        
-        // Find the torrent
-        auto it = torrents_.find(piece.info_hash);
-        if (it == torrents_.end() || !it->second.handle.is_valid()) {
-            continue;
+    try {
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(data_dir)) {
+            if (entry.is_regular_file()) {
+                files.push_back({
+                    entry.path(),
+                    entry.file_size(),
+                    entry.last_write_time()
+                });
+            }
         }
-        
-        // Set piece priority to don't download
-        it->second.handle.piece_priority(piece.piece_index, lt::dont_download);
-        
-        // Clear the piece data from disk
-        it->second.handle.clear_piece_deadlines();
-        
-        // NOTE: Libtorrent doesn't have a direct "delete this piece" API
-        // Setting priority to dont_download and calling clear_piece_deadlines
-        // will eventually cause the piece to be removed during cache management
-        // For immediate deletion, we could use file operations, but that's risky
-        
-        freed += piece.size_bytes;
-        pieces_deleted++;
-        
-        LOG_DEBUG("Marked piece {}/{} from {} for deletion (size={})",
-                  piece.piece_index, it->second.total_pieces, it->second.name,
-                  utils::format_bytes(piece.size_bytes));
+    } catch (const std::exception& e) {
+        LOG_ERROR("Error scanning data directory {}: {}", data_dir.string(), e.what());
+        return;
     }
     
-    if (pieces_deleted > 0) {
-        LOG_WARN("Deleted {} pieces to free {} (target: {})",
-                 pieces_deleted, utils::format_bytes(freed), 
-                 utils::format_bytes(bytes_to_free));
+    if (files.empty()) {
+        LOG_WARN("No files to delete in data directory");
+        return;
     }
-}
-
-uint64_t PieceManager::get_total_data_size() const {
-    uint64_t total = 0;
-    for (const auto& [info_hash, metrics] : torrents_) {
-        total += metrics.size_we_have;
+    
+    // Sort by modification time (oldest first)
+    std::sort(files.begin(), files.end(), 
+        [](const auto& a, const auto& b) {
+            return std::get<2>(a) < std::get<2>(b);
+        });
+    
+    uint64_t freed = 0;
+    int files_deleted = 0;
+    
+    for (const auto& [file_path, file_size, mtime] : files) {
+        if (freed >= bytes_to_free) break;
+        
+        try {
+            std::filesystem::remove(file_path);
+            freed += file_size;
+            files_deleted++;
+            LOG_DEBUG("Deleted file: {} ({})", file_path.string(), utils::format_bytes(file_size));
+        } catch (const std::exception& e) {
+            LOG_ERROR("Failed to delete {}: {}", file_path.string(), e.what());
+        }
     }
-    return total;
+    
+    LOG_WARN("Deleted {} files, freed {} (target: {})",
+             files_deleted, utils::format_bytes(freed), 
+             utils::format_bytes(bytes_to_free));
 }
 
 } // namespace levin

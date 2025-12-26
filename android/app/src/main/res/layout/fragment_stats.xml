@@ -32,7 +32,7 @@
                     android:id="@+id/status_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Running"
+                    android:text="Off"
                     android:textAppearance="?attr/textAppearanceHeadlineSmall"
                     android:textStyle="bold" />
 
@@ -53,34 +53,6 @@
                     android:layout_marginTop="4dp"
                     android:text="0 active torrents"
                     android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                <!-- Buttons Row -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal"
-                    android:gravity="start">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/pause_resume_button"
-                        style="@style/Widget.Material3.Button"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="2"
-                        android:text="Pause"
-                        android:layout_marginEnd="8dp"
-                        android:textSize="16sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/reload_button"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Reload"
-                        android:textSize="14sp" />
-                </LinearLayout>
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

@@ -124,23 +124,41 @@ static void print_status(const json& data) {
     
     bool paused_for_battery = data.contains("paused_for_battery") && data["paused_for_battery"].get<bool>();
     
-    std::cout << "Status: ";
-    if (total == 0) {
-        std::cout << "Unable to read filesystem\n";
+    // Get state if available
+    std::string state_str = "Running";
+    if (data.contains("state")) {
+        std::string state = data["state"];
+        // Match Android's display format
+        if (state == "OFF") {
+            state_str = "Off";
+        } else if (state == "PAUSED") {
+            state_str = "Paused";
+            if (paused_for_battery) {
+                state_str = "Paused (battery)";
+            }
+        } else if (state == "IDLE") {
+            state_str = "Idle (no torrents)";
+        } else if (state == "SEEDING") {
+            state_str = "Seeding (storage limit)";
+        } else if (state == "DOWNLOADING") {
+            state_str = "Downloading";
+        }
+    } else if (total == 0) {
+        state_str = "Unable to read filesystem";
     } else if (over_budget) {
-        std::cout << "⚠ OVER BUDGET\n";
+        state_str = "⚠ OVER BUDGET";
     } else if (paused_for_battery) {
-        std::cout << "Paused (on battery)\n";
-    } else {
-        std::cout << "Running\n";
+        state_str = "Paused (battery)";
     }
+    
+    std::cout << "Status: " << state_str << "\n";
     std::cout << "\n";
 
     // Disk
     std::cout << "Disk:\n";
     std::cout << "  Total:        " << format_bytes(disk["total_bytes"]) << "\n";
     std::cout << "  Free:         " << format_bytes(disk["free_bytes"]) << "\n";
-    std::cout << "  Torrent Data: " << format_bytes(disk["used_bytes"]) << "\n";
+    std::cout << "  Disk Used:    " << format_bytes(disk["used_bytes"]) << "\n";
     std::cout << "  Budget:       " << format_bytes(disk["budget_bytes"]) << "\n";
     std::cout << "\n";
 

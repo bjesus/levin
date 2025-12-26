@@ -83,11 +83,6 @@ public:
     void emergency_pause_downloads(const std::string& reason = "disk space emergency");
     
     /**
-     * Get total size of data we currently have.
-     */
-    uint64_t get_total_data_size() const;
-    
-    /**
      * Get metrics for all torrents.
      */
     const std::unordered_map<std::string, TorrentMetrics>& get_metrics() const {
