@@ -3,6 +3,9 @@
 # Shared test utilities for Android E2E tests
 #
 
+# Cache directory for downloaded torrents
+TORRENT_CACHE_DIR="${TORRENT_CACHE_DIR:-/tmp/levin_e2e_cache}"
+
 # ADB wrapper with optional serial
 adb_cmd() {
     if [[ -n "${ANDROID_SERIAL:-}" ]]; then
@@ -10,6 +13,84 @@ adb_cmd() {
     else
         adb "$@"
     fi
+}
+
+# Download torrent files for testing (cached)
+download_test_torrents() {
+    local count="${1:-3}"
+    
+    mkdir -p "${TORRENT_CACHE_DIR}"
+    
+    # Check if we already have enough cached torrents
+    local cached=$(find "${TORRENT_CACHE_DIR}" -name "*.torrent" -type f 2>/dev/null | wc -l)
+    if [[ $cached -ge $count ]]; then
+        echo "Using $cached cached torrent files"
+        return 0
+    fi
+    
+    echo "Downloading torrent files from Anna's Archive..."
+    
+    # Get list of torrent URLs - use data torrents which are smaller
+    local urls=$(curl -skL "https://annas-archive.org/torrents" 2>/dev/null | \
+        grep -oE '/dyn/small_file/torrents/managed_by_aa/annas_archive_data__aacid/[^"]+\.torrent' | \
+        head -10)
+    
+    local downloaded=0
+    while IFS= read -r url; do
+        [[ -z "$url" ]] && continue
+        
+        local filename=$(basename "$url")
+        local filepath="${TORRENT_CACHE_DIR}/${filename}"
+        
+        if [[ ! -f "$filepath" ]]; then
+            echo "Downloading: $filename"
+            if curl -skL "https://annas-archive.org${url}" -o "$filepath" 2>/dev/null; then
+                # Verify it's a valid torrent file (at least 1KB)
+                local size=$(stat -c%s "$filepath" 2>/dev/null || echo "0")
+                if [[ $size -gt 1000 ]] && file "$filepath" | grep -q "BitTorrent"; then
+                    downloaded=$((downloaded + 1))
+                    echo "Successfully downloaded: $filename ($size bytes)"
+                else
+                    echo "Invalid torrent file, removing: $filepath"
+                    rm -f "$filepath"
+                fi
+            fi
+        else
+            downloaded=$((downloaded + 1))
+        fi
+        
+        if [[ $downloaded -ge $count ]]; then
+            break
+        fi
+    done <<< "$urls"
+    
+    echo "Downloaded $downloaded torrent files"
+}
+
+# Push test torrents to device
+push_test_torrents() {
+    local count="${1:-1}"
+    local torrents_dir=$(get_torrents_dir)
+    
+    # Ensure we have torrents to push
+    download_test_torrents "$count"
+    
+    # Create directory on device (app must have run at least once)
+    adb_cmd shell "mkdir -p ${torrents_dir}" 2>/dev/null || true
+    
+    # Push torrent files
+    local pushed=0
+    for torrent in "${TORRENT_CACHE_DIR}"/*.torrent; do
+        if [[ -f "$torrent" ]]; then
+            adb_cmd push "$torrent" "${torrents_dir}/" 2>/dev/null
+            pushed=$((pushed + 1))
+            if [[ $pushed -ge $count ]]; then
+                break
+            fi
+        fi
+    done
+    
+    echo "Pushed $pushed torrent files to device"
 }
 
 # Install the app (uninstall first for clean state)
@@ -22,9 +103,13 @@ install_app() {
     # Install fresh
     adb_cmd install -r "${APK_PATH}"
     
-    # Grant permissions
+    # Grant permissions BEFORE starting app
     adb_cmd shell pm grant "${PACKAGE_NAME}" android.permission.POST_NOTIFICATIONS 2>/dev/null || true
     adb_cmd shell pm grant "${PACKAGE_NAME}" android.permission.FOREGROUND_SERVICE 2>/dev/null || true
+    
+    # Set battery to charging so app doesn't immediately pause
+    adb_cmd shell "dumpsys battery set ac 1" 2>/dev/null || true
+    adb_cmd shell "dumpsys battery set status 2" 2>/dev/null || true
     
     echo "App installed: ${PACKAGE_NAME}"
 }
@@ -37,7 +122,34 @@ uninstall_app() {
 # Start the app
 start_app() {
     adb_cmd shell am start -n "${MAIN_ACTIVITY}"
-    sleep 2  # Wait for app to start
+    sleep 3  # Wait for app to start and service to initialize
+}
+
+# Start app with pre-populated torrents (skips "Add Torrents?" dialog)
+start_app_with_torrents() {
+    local count="${1:-1}"
+    
+    # Start app briefly to create directories
+    adb_cmd shell am start -n "${MAIN_ACTIVITY}"
+    sleep 3
+    
+    # Dismiss any permission dialogs
+    dismiss_permission_dialogs
+    
+    # Click No on Add Torrents dialog to continue without downloading
+    click_add_torrents_no || true
+    dismiss_error_dialogs || true
+    
+    # Force stop to prepare for torrent push
+    adb_cmd shell am force-stop "${PACKAGE_NAME}"
+    sleep 1
+    
+    # Now directories should exist - push torrents
+    push_test_torrents "$count"
+    
+    # Now start app again - should skip the dialog since we have torrents
+    adb_cmd shell am start -n "${MAIN_ACTIVITY}"
+    sleep 3
 }
 
 # Click on "Add Torrents?" dialog - Yes button
@@ -46,18 +158,33 @@ click_add_torrents_yes() {
     echo "Clicking 'Yes' on Add Torrents dialog..."
     sleep 2  # Wait for dialog to appear
     
-    # Use input tap with calculated coordinates
-    # Standard Android AlertDialog has buttons at bottom
-    # Get screen dimensions
-    local size=$(adb_cmd shell "wm size" | grep -oP '\d+x\d+' | tr -d '\r')
-    local width=$(echo $size | cut -d'x' -f1)
-    local height=$(echo $size | cut -d'x' -f2)
+    # Try to find and click the "Yes" button using UI dump
+    local yes_bounds=$(adb_cmd exec-out uiautomator dump /dev/stdout 2>/dev/null | \
+        grep -oP 'text="Yes"[^>]*bounds="\[\d+,\d+\]\[\d+,\d+\]"' | \
+        grep -oP 'bounds="\[\d+,\d+\]\[\d+,\d+\]"' | head -1)
     
-    # Yes button is typically on the right, about 75% across and 60% down
-    local yes_x=$((width * 75 / 100))
-    local yes_y=$((height * 60 / 100))
-    
-    adb_cmd shell "input tap ${yes_x} ${yes_y}"
+    if [[ -n "$yes_bounds" ]]; then
+        # Extract coordinates from bounds="[x1,y1][x2,y2]"
+        local coords=$(echo "$yes_bounds" | grep -oP '\d+' | head -4)
+        local x1=$(echo "$coords" | sed -n '1p')
+        local y1=$(echo "$coords" | sed -n '2p')
+        local x2=$(echo "$coords" | sed -n '3p')
+        local y2=$(echo "$coords" | sed -n '4p')
+        local tap_x=$(( (x1 + x2) / 2 ))
+        local tap_y=$(( (y1 + y2) / 2 ))
+        
+        echo "Found Yes button at ($tap_x, $tap_y)"
+        adb_cmd shell "input tap ${tap_x} ${tap_y}"
+    else
+        echo "Yes button not found, using fallback coordinates"
+        # Fallback: calculate based on screen size
+        local size=$(adb_cmd shell "wm size" | grep -oP '\d+x\d+' | tr -d '\r')
+        local width=$(echo $size | cut -d'x' -f1)
+        local height=$(echo $size | cut -d'x' -f2)
+        local yes_x=$((width * 82 / 100))  # Adjusted for typical dialog
+        local yes_y=$((height * 58 / 100))
+        adb_cmd shell "input tap ${yes_x} ${yes_y}"
+    fi
     
     # Wait for torrent download to begin (this can take time)
     echo "Waiting for torrents to download..."
@@ -69,18 +196,83 @@ click_add_torrents_no() {
     echo "Clicking 'No' on Add Torrents dialog..."
     sleep 2  # Wait for dialog to appear
     
-    # Get screen dimensions
-    local size=$(adb_cmd shell "wm size" | grep -oP '\d+x\d+' | tr -d '\r')
-    local width=$(echo $size | cut -d'x' -f1)
-    local height=$(echo $size | cut -d'x' -f2)
+    # Try to find and click the "No" button using UI dump
+    local no_bounds=$(adb_cmd exec-out uiautomator dump /dev/stdout 2>/dev/null | \
+        grep -oP 'text="No"[^>]*bounds="\[\d+,\d+\]\[\d+,\d+\]"' | \
+        grep -oP 'bounds="\[\d+,\d+\]\[\d+,\d+\]"' | head -1)
     
-    # No button is typically on the left, about 25% across and 60% down
-    local no_x=$((width * 25 / 100))
-    local no_y=$((height * 60 / 100))
-    
-    adb_cmd shell "input tap ${no_x} ${no_y}"
+    if [[ -n "$no_bounds" ]]; then
+        # Extract coordinates from bounds="[x1,y1][x2,y2]"
+        local coords=$(echo "$no_bounds" | grep -oP '\d+' | head -4)
+        local x1=$(echo "$coords" | sed -n '1p')
+        local y1=$(echo "$coords" | sed -n '2p')
+        local x2=$(echo "$coords" | sed -n '3p')
+        local y2=$(echo "$coords" | sed -n '4p')
+        local tap_x=$(( (x1 + x2) / 2 ))
+        local tap_y=$(( (y1 + y2) / 2 ))
+        
+        echo "Found No button at ($tap_x, $tap_y)"
+        adb_cmd shell "input tap ${tap_x} ${tap_y}"
+    else
+        echo "No button not found, using fallback coordinates"
+        # Fallback: calculate based on screen size
+        local size=$(adb_cmd shell "wm size" | grep -oP '\d+x\d+' | tr -d '\r')
+        local width=$(echo $size | cut -d'x' -f1)
+        local height=$(echo $size | cut -d'x' -f2)
+        local no_x=$((width * 66 / 100))  # Adjusted for typical dialog
+        local no_y=$((height * 58 / 100))
+        adb_cmd shell "input tap ${no_x} ${no_y}"
+    fi
     
     sleep 2
+}
+
+# Dismiss any permission dialogs that might appear
+dismiss_permission_dialogs() {
+    echo "Dismissing permission dialogs..."
+    
+    # Check for notification permission dialog and click Allow
+    local allow_bounds=$(adb_cmd exec-out uiautomator dump /dev/stdout 2>/dev/null | \
+        grep -oP 'text="Allow"[^>]*bounds="\[\d+,\d+\]\[\d+,\d+\]"' | \
+        grep -oP 'bounds="\[\d+,\d+\]\[\d+,\d+\]"' | head -1)
+    
+    if [[ -n "$allow_bounds" ]]; then
+        local coords=$(echo "$allow_bounds" | grep -oP '\d+' | head -4)
+        local x1=$(echo "$coords" | sed -n '1p')
+        local y1=$(echo "$coords" | sed -n '2p')
+        local x2=$(echo "$coords" | sed -n '3p')
+        local y2=$(echo "$coords" | sed -n '4p')
+        local tap_x=$(( (x1 + x2) / 2 ))
+        local tap_y=$(( (y1 + y2) / 2 ))
+        
+        echo "Found Allow button, clicking it"
+        adb_cmd shell "input tap ${tap_x} ${tap_y}"
+        sleep 1
+    fi
+}
+
+# Dismiss error dialogs (SSL errors, etc.)
+dismiss_error_dialogs() {
+    echo "Dismissing error dialogs..."
+    
+    # Look for OK button in error dialogs
+    local ok_bounds=$(adb_cmd exec-out uiautomator dump /dev/stdout 2>/dev/null | \
+        grep -oP 'text="OK"[^>]*bounds="\[\d+,\d+\]\[\d+,\d+\]"' | \
+        grep -oP 'bounds="\[\d+,\d+\]\[\d+,\d+\]"' | head -1)
+    
+    if [[ -n "$ok_bounds" ]]; then
+        local coords=$(echo "$ok_bounds" | grep -oP '\d+' | head -4)
+        local x1=$(echo "$coords" | sed -n '1p')
+        local y1=$(echo "$coords" | sed -n '2p')
+        local x2=$(echo "$coords" | sed -n '3p')
+        local y2=$(echo "$coords" | sed -n '4p')
+        local tap_x=$(( (x1 + x2) / 2 ))
+        local tap_y=$(( (y1 + y2) / 2 ))
+        
+        echo "Found OK button, clicking it"
+        adb_cmd shell "input tap ${tap_x} ${tap_y}"
+        sleep 1
+    fi
 }
 
 # Stop the app
@@ -147,17 +339,26 @@ clear_device_data() {
 # Get notification text
 get_notification_text() {
     # Use dumpsys to get notification content
-    adb_cmd shell "dumpsys notification --noredact" 2>/dev/null | \
-        grep -A 20 "pkg=${PACKAGE_NAME}" | \
-        grep -E "android.title|android.text" | \
-        head -4
+    # First get the full NotificationRecord block, then extract title/text
+    local output=$(adb_cmd shell "dumpsys notification --noredact" 2>/dev/null)
+    
+    # Check if notification exists for our package
+    if echo "$output" | grep -q "NotificationRecord.*pkg=${PACKAGE_NAME}"; then
+        # Extract title and text from the notification record
+        # Use awk to get only unique lines while preserving order (title first)
+        echo "$output" | grep -A 60 "NotificationRecord.*pkg=${PACKAGE_NAME}" | \
+            grep -E "android\.(title|text)=String" | \
+            awk '!seen[$0]++' | \
+            head -2
+    fi
 }
 
 # Get the current state from notification title
 get_state_from_notification() {
     local notif=$(get_notification_text)
     # Parse "Levin - <state>" from title
-    echo "${notif}" | grep "android.title" | sed 's/.*Levin - //' | tr -d '\r'
+    # Format is: android.title=String (Levin - Downloading)
+    echo "${notif}" | grep "android.title" | sed 's/.*Levin - //' | sed 's/)$//' | tr -d '\r'
 }
 
 # Wait for a specific state (with timeout)

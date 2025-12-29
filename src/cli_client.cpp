@@ -137,7 +137,7 @@ static void print_status(const json& data) {
                 state_str = "Paused (battery)";
             }
         } else if (state == "IDLE") {
-            state_str = "Idle (no torrents)";
+            state_str = "No torrents";
         } else if (state == "SEEDING") {
             state_str = "Seeding (storage limit)";
         } else if (state == "DOWNLOADING") {

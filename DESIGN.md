@@ -267,14 +267,14 @@ Both platforms display the same human-readable state text:
 | OFF              | "Off"                     |
 | PAUSED (battery) | "Paused (battery)"        |
 | PAUSED (network) | "Paused (network)"        |
-| IDLE             | "Idle (no torrents)"      |
+| IDLE             | "No torrents"             |
 | SEEDING          | "Seeding (storage limit)" |
 | DOWNLOADING      | "Downloading"             |
 
 **Implementation:**
 
 - **Desktop:** CLI status command shows this on first line
-- **Android:** Notification title shows "Levin - {state_text}"
+- **Android:** Notification title shows "Levin - {state_text}" (e.g., "Levin - No torrents")
 
 ### Notification Details
 

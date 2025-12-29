@@ -39,8 +39,29 @@ COPY . /app
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build -j$(nproc)
 
-# Create torrent cache directory (torrents will be downloaded at test runtime)
-RUN mkdir -p /tmp/levin-e2e-torrent-cache
+# Pre-cache torrents from Anna's Archive
+# Using -k flag to allow insecure connections (for corporate proxies/VPNs like Cloudflare WARP)
+RUN mkdir -p /tmp/levin-e2e-torrent-cache \
+    && for i in 1 2 3; do \
+        echo "Attempt $i to fetch torrent URLs..."; \
+        urls=$(curl -skL --connect-timeout 15 --max-time 45 \
+            "https://annas-archive.org/dyn/generate_torrents?max_tb=1&format=url" 2>/dev/null | head -5); \
+        if [ -n "$urls" ]; then \
+            echo "$urls" | while read url; do \
+                if [ -n "$url" ] && [ "${url#http}" != "$url" ]; then \
+                    filename=$(basename "$url"); \
+                    echo "Downloading $filename..."; \
+                    curl -skL --connect-timeout 15 --max-time 90 \
+                        -o "/tmp/levin-e2e-torrent-cache/$filename" "$url" 2>/dev/null && \
+                    echo "Downloaded $filename" || true; \
+                fi; \
+            done; \
+            break; \
+        fi; \
+        sleep 3; \
+    done; \
+    torrent_count=$(find /tmp/levin-e2e-torrent-cache -name "*.torrent" -size +0 2>/dev/null | wc -l); \
+    echo "Cached $torrent_count torrents"
 
 # Set environment for tests
 ENV LEVIN_BINARY=/app/build/levin

@@ -178,15 +178,16 @@ ensure_torrent_cache() {
     echo "Downloading torrents from Anna's Archive..."
     
     # Try to fetch torrent URLs from Anna's Archive with retries
+    # Using -k flag to allow insecure connections (for corporate proxies/VPNs)
     local urls_response=""
     for attempt in 1 2 3; do
-        urls_response=$(curl -sL --connect-timeout 10 --max-time 30 \
+        urls_response=$(curl -skL --connect-timeout 15 --max-time 45 \
             "https://annas-archive.org/dyn/generate_torrents?max_tb=1&format=url" 2>/dev/null | head -5)
         if [[ -n "${urls_response}" ]]; then
             break
         fi
         echo "Attempt ${attempt} failed, retrying..."
-        sleep 2
+        sleep 3
     done
     
     if [[ -z "${urls_response}" ]]; then
@@ -205,7 +206,7 @@ ensure_torrent_cache() {
         local filename=$(basename "${url}")
         local dest="${TORRENT_CACHE_DIR}/${filename}"
         
-        if curl -sL --connect-timeout 10 --max-time 60 -o "${dest}" "${url}" 2>/dev/null; then
+        if curl -skL --connect-timeout 15 --max-time 90 -o "${dest}" "${url}" 2>/dev/null; then
             # Verify it's a valid torrent (starts with 'd' for bencode dict)
             if [[ -s "${dest}" && $(head -c1 "${dest}") == "d" ]]; then
                 echo "Downloaded: ${filename}"
