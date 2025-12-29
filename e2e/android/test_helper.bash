@@ -40,6 +40,49 @@ start_app() {
     sleep 2  # Wait for app to start
 }
 
+# Click on "Add Torrents?" dialog - Yes button
+# This dialog appears on first launch when no torrents exist
+click_add_torrents_yes() {
+    echo "Clicking 'Yes' on Add Torrents dialog..."
+    sleep 2  # Wait for dialog to appear
+    
+    # Use input tap with calculated coordinates
+    # Standard Android AlertDialog has buttons at bottom
+    # Get screen dimensions
+    local size=$(adb_cmd shell "wm size" | grep -oP '\d+x\d+' | tr -d '\r')
+    local width=$(echo $size | cut -d'x' -f1)
+    local height=$(echo $size | cut -d'x' -f2)
+    
+    # Yes button is typically on the right, about 75% across and 60% down
+    local yes_x=$((width * 75 / 100))
+    local yes_y=$((height * 60 / 100))
+    
+    adb_cmd shell "input tap ${yes_x} ${yes_y}"
+    
+    # Wait for torrent download to begin (this can take time)
+    echo "Waiting for torrents to download..."
+    sleep 10
+}
+
+# Click on "Add Torrents?" dialog - No button
+click_add_torrents_no() {
+    echo "Clicking 'No' on Add Torrents dialog..."
+    sleep 2  # Wait for dialog to appear
+    
+    # Get screen dimensions
+    local size=$(adb_cmd shell "wm size" | grep -oP '\d+x\d+' | tr -d '\r')
+    local width=$(echo $size | cut -d'x' -f1)
+    local height=$(echo $size | cut -d'x' -f2)
+    
+    # No button is typically on the left, about 25% across and 60% down
+    local no_x=$((width * 25 / 100))
+    local no_y=$((height * 60 / 100))
+    
+    adb_cmd shell "input tap ${no_x} ${no_y}"
+    
+    sleep 2
+}
+
 # Stop the app
 stop_app() {
     adb_cmd shell am force-stop "${PACKAGE_NAME}"

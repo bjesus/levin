@@ -41,6 +41,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_no  # Dismiss dialog, stay in IDLE
     sleep 5  # Wait for service to start
     
     wait_for_state "Idle" 15
@@ -54,6 +55,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_no  # Dismiss dialog
     sleep 5
     
     wait_for_state "Idle" 15
@@ -79,7 +81,8 @@ teardown() {
     create_device_files_mb 250 5
     
     start_app
-    sleep 10  # Wait for storage check
+    click_add_torrents_yes  # Add torrents to test SEEDING state
+    sleep 15  # Wait for torrents to download and storage check
     
     # May need torrents loaded to enter SEEDING (otherwise IDLE)
     # For now, check if state reflects storage issue
@@ -105,7 +108,8 @@ teardown() {
     create_device_files_mb 300 6
     
     start_app
-    sleep 10
+    click_add_torrents_yes  # Add torrents to test SEEDING state
+    sleep 15  # Wait for torrents to download
     
     # If storage limit is triggered and torrents exist, should show Seeding
     local notif=$(get_notification_text)
@@ -128,9 +132,11 @@ teardown() {
     simulate_ac_power
     
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
-    wait_for_state "Idle" 15
+    # Wait for initial state (could be IDLE, DOWNLOADING, or SEEDING)
+    sleep 3
     
     # Switch to battery
     simulate_battery_power
@@ -146,6 +152,7 @@ teardown() {
 @test "PAUSED: notification shows 'Paused (battery)' text" {
     simulate_ac_power
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
     simulate_battery_power
@@ -161,6 +168,7 @@ teardown() {
 @test "PAUSED: resumes when AC power reconnected" {
     simulate_ac_power
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
     # Go to battery
@@ -188,9 +196,11 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
-    wait_for_state "Idle" 15
+    # Wait for initial state
+    sleep 3
     
     # Disable WiFi (cellular only)
     disable_wifi
@@ -208,6 +218,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
     disable_wifi
@@ -225,6 +236,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
     disable_wifi
@@ -249,6 +261,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
     # Disable both
@@ -266,6 +279,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_yes  # Add torrents for realistic test
     sleep 5
     
     disable_wifi  # Network not OK
@@ -284,6 +298,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_no  # Stay in IDLE state for this test
     sleep 5
     
     # Service should be running
@@ -299,6 +314,7 @@ teardown() {
     enable_wifi
     
     start_app
+    click_add_torrents_yes  # Add torrents for active state
     sleep 5
     
     local notif=$(get_notification_text)
