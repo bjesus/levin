@@ -5,7 +5,7 @@
 pid_file = "${TEST_DIR}/levin.pid"
 log_file = "${TEST_DIR}/levin.log"
 log_level = "debug"
-run_on_battery = false
+run_on_battery = true
 
 [paths]
 watch_directory = "${TEST_DIR}/torrents"

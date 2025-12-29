@@ -370,7 +370,12 @@ void Daemon::run() {
 }
 
 void Daemon::shutdown() {
-    LOG_INFO("Shutdown requested");
+    // Only log if logger is still available (it may have been shut down during error handling)
+    try {
+        LOG_INFO("Shutdown requested");
+    } catch (...) {
+        // Logger not available, skip logging
+    }
     running_ = false;
 }
 

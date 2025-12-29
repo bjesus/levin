@@ -285,8 +285,14 @@ int run_daemon(int argc, char** argv) {
 
     } catch (const std::exception& e) {
         std::cerr << "Fatal error: " << e.what() << std::endl;
-        LOG_CRITICAL("Fatal error: {}", e.what());
-        Logger::shutdown();
+        // Only log if logger was initialized
+        try {
+            LOG_CRITICAL("Fatal error: {}", e.what());
+            // Don't shut down logger here - daemon destructor may need it
+        } catch (...) {
+            // Logger not initialized, ignore
+        }
+        // Logger will be cleaned up automatically on program exit
         return EXIT_FAILURE;
     }
 }

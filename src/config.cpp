@@ -251,7 +251,7 @@ Config Config::load(const std::string& path) {
             config.network.enable_upnp = toml::find<bool>(network, "enable_upnp");
             config.network.enable_natpmp = toml::find<bool>(network, "enable_natpmp");
             config.network.enable_webrtc = toml::find<bool>(network, "enable_webrtc");
-            config.network.webrtc_stun_server = toml::find<std::string>(network, "webrtc_stun_server");
+            config.network.webrtc_stun_server = toml::find_or<std::string>(network, "webrtc_stun_server", "stun:stun.l.google.com:19302");
         }
 
         // Load CLI settings
