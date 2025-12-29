@@ -1,0 +1,26 @@
+# Docker Compose for E2E Tests
+# Usage:
+#   docker-compose -f docker-compose.e2e.yml build
+#   docker-compose -f docker-compose.e2e.yml run desktop-tests
+#   docker-compose -f docker-compose.e2e.yml run desktop-tests e2e/desktop/test_state_machine.bats
+#
+# Before running tests, ensure torrent cache is populated:
+#   source e2e/desktop/test_helper.bash && ensure_torrent_cache
+
+version: '3.8'
+
+services:
+  desktop-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e-desktop
+    # Allow tests to run with DBus
+    privileged: true
+    # Mount torrent cache from host (must be pre-populated)
+    volumes:
+      - /tmp/levin-e2e-torrent-cache:/tmp/levin-e2e-torrent-cache:ro
+    environment:
+      - LEVIN_BINARY=/app/build/levin
+      - PROJECT_ROOT=/app
+      - E2E_DIR=/app/e2e/desktop
+      - TORRENT_CACHE_DIR=/tmp/levin-e2e-torrent-cache

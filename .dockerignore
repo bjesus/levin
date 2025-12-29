@@ -1,0 +1,30 @@
+# Build artifacts
+build/
+cmake-build-*/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# APK files
+*.apk
+
+# Test artifacts
+/tmp/
+*.log
+
+# Android build artifacts
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+
+# macOS
+.DS_Store

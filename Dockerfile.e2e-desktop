@@ -1,0 +1,52 @@
+# Dockerfile for Levin Desktop E2E Tests
+# This container includes all dependencies needed to build and test the desktop daemon
+
+FROM ubuntu:22.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    # Build tools
+    build-essential \
+    cmake \
+    pkg-config \
+    git \
+    # Required libraries
+    libboost-all-dev \
+    libssl-dev \
+    libcurl4-openssl-dev \
+    libtorrent-rasterbar-dev \
+    libglib2.0-dev \
+    # Testing tools
+    bats \
+    curl \
+    # Power monitoring mock (for DBus tests)
+    python3-dbusmock \
+    dbus \
+    # Utilities
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy source code
+COPY . /app
+
+# Build the project
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build -j$(nproc)
+
+# Create torrent cache directory (torrents will be downloaded at test runtime)
+RUN mkdir -p /tmp/levin-e2e-torrent-cache
+
+# Set environment for tests
+ENV LEVIN_BINARY=/app/build/levin
+ENV PROJECT_ROOT=/app
+ENV E2E_DIR=/app/e2e/desktop
+ENV TORRENT_CACHE_DIR=/tmp/levin-e2e-torrent-cache
+
+# Default command runs all desktop E2E tests
+CMD ["/app/e2e/desktop/run_tests.sh"]

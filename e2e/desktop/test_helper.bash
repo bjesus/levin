@@ -161,31 +161,105 @@ count_data_files() {
     find "${TEST_DIR}/data" -type f 2>/dev/null | wc -l
 }
 
-# Download a torrent for testing
-# Uses Anna's Archive functionality to get real torrents
-download_test_torrent() {
-    local dest="${TEST_DIR}/torrents/test.torrent"
+# Cache directory for downloaded torrents (shared across tests)
+TORRENT_CACHE_DIR="/tmp/levin-e2e-torrent-cache"
+
+# Ensure torrent cache exists and has at least one torrent
+ensure_torrent_cache() {
+    mkdir -p "${TORRENT_CACHE_DIR}"
     
-    # For now, create a minimal valid torrent file for testing
-    # In production, this would use Anna's Archive API
-    # We'll implement this properly in the integration
+    # Check if we already have torrents cached
+    local torrent_count=$(find "${TORRENT_CACHE_DIR}" -name "*.torrent" -type f -size +0 2>/dev/null | wc -l)
     
-    echo "TODO: Download torrent from Anna's Archive"
-    return 1
+    if [[ ${torrent_count} -ge 1 ]]; then
+        return 0
+    fi
+    
+    echo "Downloading torrents from Anna's Archive..."
+    
+    # Try to fetch torrent URLs from Anna's Archive with retries
+    local urls_response=""
+    for attempt in 1 2 3; do
+        urls_response=$(curl -sL --connect-timeout 10 --max-time 30 \
+            "https://annas-archive.org/dyn/generate_torrents?max_tb=1&format=url" 2>/dev/null | head -5)
+        if [[ -n "${urls_response}" ]]; then
+            break
+        fi
+        echo "Attempt ${attempt} failed, retrying..."
+        sleep 2
+    done
+    
+    if [[ -z "${urls_response}" ]]; then
+        echo "Failed to fetch torrent URLs from Anna's Archive"
+        echo "Tests requiring torrents will be skipped"
+        return 1
+    fi
+    
+    # Download first few torrents
+    local count=0
+    while IFS= read -r url; do
+        if [[ -z "${url}" || "${url}" != http* ]]; then
+            continue
+        fi
+        
+        local filename=$(basename "${url}")
+        local dest="${TORRENT_CACHE_DIR}/${filename}"
+        
+        if curl -sL --connect-timeout 10 --max-time 60 -o "${dest}" "${url}" 2>/dev/null; then
+            # Verify it's a valid torrent (starts with 'd' for bencode dict)
+            if [[ -s "${dest}" && $(head -c1 "${dest}") == "d" ]]; then
+                echo "Downloaded: ${filename}"
+                count=$((count + 1))
+            else
+                rm -f "${dest}"
+            fi
+        fi
+        
+        # Stop after getting 3 torrents
+        if [[ ${count} -ge 3 ]]; then
+            break
+        fi
+    done <<< "${urls_response}"
+    
+    if [[ ${count} -eq 0 ]]; then
+        echo "Failed to download any valid torrents"
+        return 1
+    fi
+    
+    echo "Cached ${count} torrents"
+    return 0
+}
+
+# Copy a torrent from cache to the test watch directory
+# Returns the path to the copied torrent
+copy_cached_torrent() {
+    local name="${1:-test}"
+    local dest="${TEST_DIR}/torrents/${name}.torrent"
+    
+    # Ensure cache exists
+    ensure_torrent_cache || return 1
+    
+    # Get first cached torrent
+    local source=$(find "${TORRENT_CACHE_DIR}" -name "*.torrent" -type f 2>/dev/null | head -1)
+    
+    if [[ -z "${source}" ]]; then
+        echo "No cached torrents available"
+        return 1
+    fi
+    
+    cp "${source}" "${dest}"
+    echo "${dest}"
 }
 
 # Create a mock torrent file (for state testing without real downloads)
+# This creates a properly formatted bencode torrent that libtorrent will accept
 create_mock_torrent() {
     local name="${1:-test}"
     local dest="${TEST_DIR}/torrents/${name}.torrent"
     
-    # Create a minimal bencoded torrent file
-    # This won't actually download anything but will be loaded by libtorrent
-    cat > "${dest}" << 'EOF'
-d8:announce35:udp://tracker.example.com:6969/4:infod6:lengthi1024e4:name8:testfile12:piece lengthi16384e6:pieces20:xxxxxxxxxxxxxxxxxxxx7:privatei0eee
-EOF
-    
-    echo "${dest}"
+    # Use a cached real torrent instead of a mock
+    # This ensures libtorrent can actually load it
+    copy_cached_torrent "${name}"
 }
 
 # Simulate AC power connected (for power monitoring tests)

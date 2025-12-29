@@ -167,17 +167,20 @@ teardown() {
     mkdir -p "${TEST_DIR}/data/torrent1"
     mkdir -p "${TEST_DIR}/data/torrent2"
     
-    # Put files in subdirectories
+    # Put files in subdirectories (each 80MB, total 240MB > 200MB limit)
     dd if=/dev/urandom of="${TEST_DIR}/data/torrent1/file1.dat" bs=1M count=80 2>/dev/null
     dd if=/dev/urandom of="${TEST_DIR}/data/torrent1/file2.dat" bs=1M count=80 2>/dev/null
     dd if=/dev/urandom of="${TEST_DIR}/data/torrent2/file3.dat" bs=1M count=80 2>/dev/null
     
+    # Count our test files before adding torrent
+    local initial_test_files=$(find "${TEST_DIR}/data" -name "*.dat" -type f | wc -l)
+    
     create_mock_torrent "test1"
     
-    # Wait for deletion
+    # Wait for deletion cycle
     sleep 15
     
-    # Directories should still exist (only files deleted)
+    # Directories should still exist (only files deleted, not directories)
     [[ -d "${TEST_DIR}/data/torrent1" ]] || {
         echo "Directory torrent1 should not be deleted"
         return 1
@@ -187,9 +190,12 @@ teardown() {
         return 1
     }
     
-    # But some files should be gone
-    local remaining=$(find "${TEST_DIR}/data" -type f | wc -l)
-    assert_lt "${remaining}" 3 "Some files should be deleted"
+    # Some of our .dat test files should be gone (at least 40MB worth = 1 file)
+    local remaining_test_files=$(find "${TEST_DIR}/data" -name "*.dat" -type f | wc -l)
+    
+    # At least one file should be deleted to bring us under the limit
+    assert_lt "${remaining_test_files}" "${initial_test_files}" \
+        "At least one test file should be deleted (was ${initial_test_files}, now ${remaining_test_files})"
 }
 
 @test "DELETION: handles empty data directory gracefully" {
