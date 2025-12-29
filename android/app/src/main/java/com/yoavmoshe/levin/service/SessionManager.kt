@@ -232,7 +232,7 @@ class LevinSessionManager(
     
     /**
      * Pause downloads only (for storage limit) - uploads continue
-     * Sets download rate limit to 1 byte/sec (effectively 0)
+     * Sets all pieces we don't have to IGNORE priority to stop downloads
      */
     fun pauseDownloads() {
         if (isDownloadPaused) {
@@ -249,17 +249,28 @@ class LevinSessionManager(
         Log.i(TAG, "Pausing downloads only (uploads continue)")
         isDownloadPaused = true
         
-        // Set download rate limit to 1 byte/sec (effectively stops downloads)
-        // Upload limit remains unlimited
-        val pack = settings_pack()
-        pack.set_int(settings_pack.int_types.download_rate_limit.swigValue(), 1)
-        currentSession.swig().apply_settings(pack)
+        // Set all pieces we don't have to IGNORE priority (dont_download)
+        var totalPaused = 0
+        for ((hash, handle) in torrents) {
+            if (!handle.isValid) continue
+            
+            val torrentInfo = handle.torrentFile() ?: continue
+            val numPieces = torrentInfo.numPieces()
+            
+            for (i in 0 until numPieces) {
+                if (!handle.havePiece(i)) {
+                    handle.piecePriority(i, org.libtorrent4j.Priority.IGNORE)
+                    totalPaused++
+                }
+            }
+        }
         
-        Log.i(TAG, "Downloads paused (rate limit = 1 byte/sec) - uploads still active")
+        Log.i(TAG, "Downloads paused ($totalPaused pieces set to IGNORE) - uploads still active")
     }
     
     /**
      * Resume downloads (for storage limit)
+     * Sets pieces back to NORMAL priority to resume downloads
      */
     fun resumeDownloads() {
         if (!isDownloadPaused) {
@@ -276,12 +287,23 @@ class LevinSessionManager(
         Log.i(TAG, "Resuming downloads")
         isDownloadPaused = false
         
-        // Set download rate limit back to unlimited (0 = unlimited in libtorrent)
-        val pack = settings_pack()
-        pack.set_int(settings_pack.int_types.download_rate_limit.swigValue(), 0)
-        currentSession.swig().apply_settings(pack)
+        // Set all pieces we don't have back to DEFAULT priority
+        var totalResumed = 0
+        for ((hash, handle) in torrents) {
+            if (!handle.isValid) continue
+            
+            val torrentInfo = handle.torrentFile() ?: continue
+            val numPieces = torrentInfo.numPieces()
+            
+            for (i in 0 until numPieces) {
+                if (!handle.havePiece(i)) {
+                    handle.piecePriority(i, org.libtorrent4j.Priority.DEFAULT)
+                    totalResumed++
+                }
+            }
+        }
         
-        Log.i(TAG, "Downloads resumed (rate limit = unlimited)")
+        Log.i(TAG, "Downloads resumed ($totalResumed pieces set to DEFAULT)")
     }
     
     /**

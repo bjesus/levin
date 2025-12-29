@@ -6,6 +6,7 @@
 #include "utils.hpp"
 #include <libtorrent/torrent_status.hpp>
 #include <algorithm>
+#include <random>
 #include <filesystem>
 
 namespace lt = libtorrent;
@@ -295,16 +296,15 @@ void PieceManager::delete_pieces(uint64_t bytes_to_free) {
         return;
     }
     
-    // Collect all files in the data directory with their sizes and modification times
-    std::vector<std::tuple<std::filesystem::path, uint64_t, std::filesystem::file_time_type>> files;
+    // Collect all files in the data directory with their sizes
+    std::vector<std::pair<std::filesystem::path, uint64_t>> files;
     
     try {
         for (const auto& entry : std::filesystem::recursive_directory_iterator(data_dir)) {
             if (entry.is_regular_file()) {
                 files.push_back({
                     entry.path(),
-                    entry.file_size(),
-                    entry.last_write_time()
+                    entry.file_size()
                 });
             }
         }
@@ -318,16 +318,15 @@ void PieceManager::delete_pieces(uint64_t bytes_to_free) {
         return;
     }
     
-    // Sort by modification time (oldest first)
-    std::sort(files.begin(), files.end(), 
-        [](const auto& a, const auto& b) {
-            return std::get<2>(a) < std::get<2>(b);
-        });
+    // Shuffle to random order (no assumption that older files are better seeded)
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(files.begin(), files.end(), g);
     
     uint64_t freed = 0;
     int files_deleted = 0;
     
-    for (const auto& [file_path, file_size, mtime] : files) {
+    for (const auto& [file_path, file_size] : files) {
         if (freed >= bytes_to_free) break;
         
         try {

@@ -513,8 +513,8 @@ class LevinService : Service() {
             return
         }
         
-        // Sort by modification time (oldest first)
-        files.sortBy { it.first.lastModified() }
+        // Shuffle to random order (no assumption that older files are better seeded)
+        files.shuffle()
         
         var freed = 0L
         var deleted = 0

@@ -3,9 +3,9 @@
 #include "logger.hpp"
 #include "utils.hpp"
 #include <sys/statvfs.h>
-#include <sys/stat.h>
 #include <filesystem>
 #include <algorithm>
+#include <cstdio>
 
 namespace levin {
 
@@ -41,26 +41,42 @@ bool DiskMonitor::get_filesystem_stats(uint64_t& total_bytes, uint64_t& free_byt
 }
 
 uint64_t DiskMonitor::calculate_actual_disk_usage() {
-    uint64_t total_bytes = 0;
+    // Use 'du -s' to get actual disk blocks used (handles sparse files correctly)
+    // This matches Android's implementation for consistency
+    std::string command = "du -s " + data_directory_ + " 2>/dev/null";
     
-    try {
-        namespace fs = std::filesystem;
-        for (const auto& entry : fs::recursive_directory_iterator(
-                data_directory_, 
-                fs::directory_options::skip_permission_denied)) {
-            if (entry.is_regular_file()) {
-                struct stat st;
-                if (stat(entry.path().c_str(), &st) == 0) {
-                    // st_blocks is in 512-byte units on most systems
-                    total_bytes += static_cast<uint64_t>(st.st_blocks) * 512;
-                }
-            }
-        }
-    } catch (const std::exception& e) {
-        LOG_ERROR("Failed to calculate disk usage for {}: {}", data_directory_, e.what());
+    FILE* pipe = popen(command.c_str(), "r");
+    if (!pipe) {
+        LOG_ERROR("Failed to run du command for {}", data_directory_);
+        return 0;
     }
     
-    return total_bytes;
+    char buffer[256];
+    std::string result;
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        result += buffer;
+    }
+    
+    int status = pclose(pipe);
+    if (status != 0) {
+        LOG_ERROR("du command failed for {}", data_directory_);
+        return 0;
+    }
+    
+    // Parse output: "12345\t/path" where 12345 is in KB
+    size_t tab_pos = result.find('\t');
+    if (tab_pos == std::string::npos) {
+        LOG_ERROR("Failed to parse du output: {}", result);
+        return 0;
+    }
+    
+    try {
+        uint64_t size_kb = std::stoull(result.substr(0, tab_pos));
+        return size_kb * 1024;  // Convert KB to bytes
+    } catch (const std::exception& e) {
+        LOG_ERROR("Failed to parse du size from: {}", result);
+        return 0;
+    }
 }
 
 DiskMonitor::SpaceStatus DiskMonitor::check_space() {
@@ -128,8 +144,8 @@ DiskMonitor::SpaceStatus DiskMonitor::check_space() {
         status.budget_bytes = 0;
     }
     
-    // If budget is 0 after hysteresis, we're over budget
-    if (status.budget_bytes == 0 && !status.over_budget) {
+    // If budget is 0 or negative after hysteresis, we're over budget
+    if (status.budget_bytes <= 0 && !status.over_budget) {
         status.over_budget = true;
         status.deficit_bytes = 0;
     }
