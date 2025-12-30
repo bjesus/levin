@@ -140,6 +140,7 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTS=OFF \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl@3
           cmake --build build -j$(sysctl -n hw.ncpu)
 

@@ -45,6 +45,7 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DBUILD_TESTS=ON \
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             ${{ runner.os == 'macOS' && '-DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl@3' || '' }}
 
       - name: Build
