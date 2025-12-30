@@ -29,11 +29,12 @@ jobs:
             libboost-system-dev \
             libboost-filesystem-dev \
             libssl-dev \
-            libtorrent-rasterbar-dev \
             libcurl4-openssl-dev \
+            libglib2.0-dev \
             pkg-config \
             debhelper \
-            devscripts
+            devscripts \
+            git
 
       - name: Build package
         run: |
@@ -132,14 +133,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install cmake boost libtorrent-rasterbar openssl@3 pkg-config curl
+          brew install cmake boost openssl@3 pkg-config curl
 
       - name: Build
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTS=OFF \
-            -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl@3
+            -DOPENSSL_ROOT_DIR=/opt/homebrew/opt/openssl@3
           cmake --build build -j$(sysctl -n hw.ncpu)
 
       - name: Create tarball

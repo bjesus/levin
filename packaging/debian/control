@@ -9,7 +9,7 @@ Build-Depends: debhelper-compat (= 13),
                libboost-filesystem-dev (>= 1.70),
                libssl-dev,
                libcurl4-openssl-dev,
-               libtorrent-rasterbar-dev (>= 2.0),
+               libglib2.0-dev,
                pkg-config,
                git
 Standards-Version: 4.6.0

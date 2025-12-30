@@ -1,4 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
+
+# Allow older cmake_minimum_required in subprojects (needed for plog in libdatachannel)
+if(POLICY CMP0000)
+    cmake_policy(SET CMP0000 OLD)
+endif()
+
+# Set minimum policy version for compatibility with bundled deps
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum CMake policy version")
+
 project(levin VERSION 0.4.2 LANGUAGES CXX)
 
 # Set C++17 standard
