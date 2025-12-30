@@ -138,11 +138,6 @@ teardown() {
 # =============================================================================
 
 @test "PAUSED: pauses when on battery (runOnBattery=false)" {
-    # Skip in CI - start_app_with_torrents is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping battery test in CI - emulator state unreliable"
-    fi
-    
     # Start with AC power
     simulate_ac_power
     enable_wifi
@@ -173,11 +168,6 @@ teardown() {
 }
 
 @test "PAUSED: state manager logs show PAUSED transition on battery" {
-    # Skip in CI - start_app_with_torrents is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping battery test in CI - emulator state unreliable"
-    fi
-    
     simulate_ac_power
     enable_wifi
     
@@ -203,11 +193,6 @@ teardown() {
 }
 
 @test "PAUSED: resumes when AC power reconnected" {
-    # Skip in CI - start_app_with_torrents is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping battery test in CI - emulator state unreliable"
-    fi
-    
     simulate_ac_power
     enable_wifi
     
@@ -246,11 +231,6 @@ teardown() {
 # =============================================================================
 
 @test "PAUSED: pauses when WiFi disabled (runOnCellular=false)" {
-    # Skip in CI - WiFi manipulation is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping WiFi test in CI - emulator network state unreliable"
-    fi
-    
     simulate_ac_power
     enable_wifi
     
@@ -278,11 +258,6 @@ teardown() {
 }
 
 @test "PAUSED: logs show network condition change when WiFi disabled" {
-    # Skip in CI - WiFi manipulation is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping WiFi test in CI - emulator network state unreliable"
-    fi
-    
     simulate_ac_power
     enable_wifi
     
@@ -310,11 +285,6 @@ teardown() {
 }
 
 @test "PAUSED: resumes when WiFi re-enabled" {
-    # Skip in CI - WiFi manipulation is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping WiFi test in CI - emulator network state unreliable"
-    fi
-    
     simulate_ac_power
     enable_wifi
     
@@ -349,11 +319,6 @@ teardown() {
 # =============================================================================
 
 @test "PRIORITY: battery pause takes precedence over network" {
-    # Skip in CI - WiFi manipulation is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping WiFi test in CI - emulator network state unreliable"
-    fi
-    
     simulate_ac_power
     enable_wifi
     
@@ -381,11 +346,6 @@ teardown() {
 }
 
 @test "PRIORITY: network pause when battery OK but WiFi disabled" {
-    # Skip in CI - WiFi manipulation is flaky in CI emulators
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping WiFi test in CI - emulator network state unreliable"
-    fi
-    
     simulate_ac_power  # Battery OK
     enable_wifi
     
@@ -433,12 +393,6 @@ teardown() {
 }
 
 @test "SERVICE: notification visible in active states" {
-    # Skip in CI - this test uses start_app_with_torrents which can be flaky
-    # after WiFi tests have run
-    if [[ -n "${CI:-}" || -n "${GITHUB_ACTIONS:-}" ]]; then
-        skip "Skipping flaky notification test in CI"
-    fi
-    
     simulate_ac_power
     enable_wifi
     

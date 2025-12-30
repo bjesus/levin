@@ -92,7 +92,9 @@ jobs:
       - name: Run E2E tests on emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          # Use API 29 (Android 10) to avoid scoped storage restrictions
+          # API 30+ restricts access to /sdcard/Android/data/<package>/
+          api-level: 29
           arch: x86_64
           profile: pixel_5
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none

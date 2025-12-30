@@ -75,14 +75,21 @@ push_test_torrents() {
     # Ensure we have torrents to push
     download_test_torrents "$count"
     
-    # Create directory on device (app must have run at least once)
-    adb_cmd shell "mkdir -p ${torrents_dir}" 2>/dev/null || true
+    # Create directory on device (app must have run at least once to create base dir)
+    # Note: CI uses API 29 which doesn't have scoped storage restrictions
+    adb_cmd shell "mkdir -p ${torrents_dir}" || {
+        echo "Warning: Could not create torrents directory"
+        return 1
+    }
     
     # Push torrent files
     local pushed=0
     for torrent in "${TORRENT_CACHE_DIR}"/*.torrent; do
         if [[ -f "$torrent" ]]; then
-            adb_cmd push "$torrent" "${torrents_dir}/" 2>/dev/null
+            if ! adb_cmd push "$torrent" "${torrents_dir}/"; then
+                echo "Warning: Failed to push $torrent"
+                continue
+            fi
             pushed=$((pushed + 1))
             if [[ $pushed -ge $count ]]; then
                 break
@@ -91,6 +98,15 @@ push_test_torrents() {
     done
     
     echo "Pushed $pushed torrent files to device"
+    
+    # Verify files were pushed
+    local file_count=$(adb_cmd shell "ls ${torrents_dir}/*.torrent 2>/dev/null | wc -l" | tr -d '\r')
+    echo "Verified $file_count torrent files on device"
+    
+    if [[ $pushed -eq 0 ]]; then
+        echo "ERROR: No torrent files were pushed!"
+        return 1
+    fi
 }
 
 # Install the app (uninstall first for clean state)
