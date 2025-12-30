@@ -16,6 +16,10 @@ setup_test_environment() {
     export TEST_SOCKET="${TEST_DIR}/levin.sock"
     export TEST_CONFIG="${TEST_DIR}/levin.toml"
     
+    # Create required directories
+    mkdir -p "${TEST_DATA_DIR}"
+    mkdir -p "${TEST_TORRENTS_DIR}"
+    
     # Get script directory
     local SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
     
