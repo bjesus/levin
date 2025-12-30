@@ -127,11 +127,11 @@ EOF
     sed -i 's/run_on_battery = .*/run_on_battery = false/' "${TEST_CONFIG}"
     
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local state=$(get_state_text)
-    assert_contains "${state}" "Idle" \
-        "Should be Idle (not Paused) when on AC power"
+    assert_contains "${state}" "No torrents" \
+        "Should be No torrents (not Paused) when on AC power"
 }
 
 @test "POWER: starts normally when fully charged" {
@@ -141,11 +141,11 @@ EOF
     sed -i 's/run_on_battery = .*/run_on_battery = false/' "${TEST_CONFIG}"
     
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local state=$(get_state_text)
-    assert_contains "${state}" "Idle" \
-        "Should be Idle when fully charged (still on AC)"
+    assert_contains "${state}" "No torrents" \
+        "Should be No torrents when fully charged (still on AC)"
 }
 
 @test "POWER: pauses when on battery (run_on_battery=false)" {
@@ -178,11 +178,11 @@ EOF
     sed -i 's/run_on_battery = .*/run_on_battery = true/' "${TEST_CONFIG}"
     
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local state=$(get_state_text)
-    assert_contains "${state}" "Idle" \
-        "Should be Idle (not Paused) when run_on_battery=true"
+    assert_contains "${state}" "No torrents" \
+        "Should be No torrents (not Paused) when run_on_battery=true"
 }
 
 # =============================================================================
@@ -194,7 +194,7 @@ EOF
     sed -i 's/run_on_battery = .*/run_on_battery = true/' "${TEST_CONFIG}"
     
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local state=$(get_state_text)
     # Should not be paused for battery when run_on_battery=true
@@ -208,7 +208,7 @@ EOF
     sed -i 's/run_on_battery = .*/run_on_battery = true/' "${TEST_CONFIG}"
     
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Status should reflect the setting (if shown)
     # This is informational - the main test is that it starts

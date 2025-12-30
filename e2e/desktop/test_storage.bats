@@ -26,7 +26,7 @@ teardown() {
 
 @test "BUDGET: under limit shows positive budget" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create 100MB (under 200MB limit)
     create_files_mb 100 5
@@ -45,7 +45,7 @@ teardown() {
 
 @test "BUDGET: at limit (within hysteresis) does not trigger Seeding" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create 180MB (200MB limit - 50MB hysteresis = 150MB threshold)
     # 180MB is above threshold but let's test the boundary
@@ -69,7 +69,7 @@ teardown() {
 
 @test "HYSTERESIS: 50MB buffer prevents rapid state changes" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Start at 140MB (should be OK)
     create_files_mb 140 7
@@ -99,7 +99,7 @@ teardown() {
 
 @test "DELETION: deletes files when over max_storage" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create 250MB in 10 files (25MB each)
     create_files_mb 250 10
@@ -125,7 +125,7 @@ teardown() {
 
 @test "DELETION: deletes only enough to meet requirement" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create 300MB in 30 files (10MB each)
     for i in $(seq 1 30); do
@@ -161,7 +161,7 @@ teardown() {
 
 @test "DELETION: deletes individual files not directories" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create files in subdirectories (simulating torrent structure)
     mkdir -p "${TEST_DIR}/data/torrent1"
@@ -200,7 +200,7 @@ teardown() {
 
 @test "DELETION: handles empty data directory gracefully" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Don't create any files
     create_mock_torrent "test1"
@@ -223,7 +223,7 @@ teardown() {
 
 @test "DISK_USAGE: calculates actual disk blocks (sparse file handling)" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create a sparse file (appears large but uses little disk space)
     local sparse_file="${TEST_DIR}/data/sparse.dat"
@@ -256,7 +256,7 @@ teardown() {
 
 @test "RECOVERY: returns to normal state after freeing space" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Go over budget
     create_files_mb 250 5

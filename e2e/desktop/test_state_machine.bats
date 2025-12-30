@@ -30,22 +30,21 @@ teardown() {
     start_daemon
     
     # Should be in Idle state
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local state=$(get_state_text)
-    assert_contains "${state}" "Idle" "Should show Idle state"
-    assert_contains "${state}" "no torrents" "Should indicate no torrents"
+    assert_contains "${state}" "No torrents" "Should show No torrents state"
 }
 
-@test "IDLE: status shows 'Idle (no torrents)' text" {
+@test "IDLE: status shows 'No torrents' text" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local status=$(get_status)
     
     # Verify exact state text per DESIGN.md
-    assert_contains "${status}" "Idle (no torrents)" \
-        "Status should show exact text from DESIGN.md"
+    assert_contains "${status}" "No torrents" \
+        "Status should show 'No torrents' text per DESIGN.md"
 }
 
 # =============================================================================
@@ -54,7 +53,7 @@ teardown() {
 
 @test "SEEDING: transitions to Seeding when over max_storage" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create 250MB of files (over 200MB max_storage limit)
     create_files_mb 250 5
@@ -75,7 +74,7 @@ teardown() {
 
 @test "SEEDING: status shows 'Seeding (storage limit)' text" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Over budget
     create_files_mb 250 5
@@ -93,7 +92,7 @@ teardown() {
 
 @test "SEEDING: files are deleted when over budget" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create 250MB of files
     create_files_mb 250 10
@@ -122,7 +121,7 @@ teardown() {
 
 @test "PRIORITY: IDLE takes precedence over SEEDING when no torrents" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Create files over budget but NO torrents
     create_files_mb 250 5
@@ -132,17 +131,17 @@ teardown() {
     
     # Should still be IDLE because no torrents
     local state=$(get_state_text)
-    assert_contains "${state}" "Idle" \
-        "Should remain Idle even when over budget if no torrents"
+    assert_contains "${state}" "No torrents" \
+        "Should remain in 'No torrents' even when over budget if no torrents"
 }
 
 @test "PRIORITY: state transitions correctly as conditions change" {
     start_daemon
     
     # Phase 1: IDLE (no torrents)
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     local state1=$(get_state_text)
-    assert_contains "${state1}" "Idle" "Phase 1: Should be Idle"
+    assert_contains "${state1}" "No torrents" "Phase 1: Should be No torrents"
     
     # Phase 2: Add torrent + over budget = SEEDING
     create_files_mb 250 5
@@ -169,7 +168,7 @@ teardown() {
 
 @test "STATUS: shows storage budget information" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     local status=$(get_status)
     
@@ -180,7 +179,7 @@ teardown() {
 
 @test "STATUS: budget shows 0 when over limit" {
     start_daemon
-    wait_for_state "Idle" 10
+    wait_for_state "No torrents" 10
     
     # Go over budget
     create_files_mb 250 5
