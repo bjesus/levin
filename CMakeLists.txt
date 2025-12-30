@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.15...3.30)
 
+# Allow FetchContent_Populate to be called directly (needed for libtorrent patching)
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 OLD)
+endif()
+
 project(levin VERSION 0.4.3 LANGUAGES CXX)
 
 # Set C++17 standard
