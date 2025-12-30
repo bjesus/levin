@@ -24,7 +24,7 @@ CLIServer::CLIServer(const Config& config,
     , statistics_(statistics)
     , piece_manager_(piece_manager)
     , disk_monitor_(disk_monitor)
-    , socket_path_(config.cli.control_socket)
+    , socket_path_(config.control_socket())
     , server_fd_(-1)
     , running_(false) {
 }

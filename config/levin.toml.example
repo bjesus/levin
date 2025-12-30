@@ -1,105 +1,108 @@
-# Archiver Configuration File
-# Copy this to /etc/levin/levin.toml and customize
+# Levin Configuration File
+# =========================
+# Copy this to ~/.config/levin/levin.toml and customize
+#
+# Most settings have sensible defaults. Only paths.watch_directory,
+# paths.data_directory, and disk.min_free are required.
+#
+# WebTorrent support: ENABLED
+# Levin can seed to both traditional BitTorrent clients and web browsers!
+# For torrents to work with WebTorrent, they must have WebSocket trackers
+# (wss://tracker.example.com) in addition to regular trackers.
 
-[daemon]
-# PID file location
-pid_file = "/var/run/levin.pid"
-
-# Log file location
-log_file = "/var/log/levin.log"
-
-# Log level: "trace", "debug", "info", "warn", "error", "critical"
-log_level = "info"
-
+# ---------------------------------------------------------------------------
+# REQUIRED: Path Settings
+# ---------------------------------------------------------------------------
 [paths]
-# Directory to watch for .torrent files (flat structure, no subdirectories)
-watch_directory = "/var/lib/levin/torrents"
+# Directory to watch for .torrent files
+watch_directory = "~/.config/levin/torrents"
 
 # Directory to store downloaded data
-data_directory = "/var/lib/levin/data"
+data_directory = "~/.cache/levin/data"
 
-# Session state file (for resuming downloads)
-session_state = "/var/lib/levin/session.state"
+# Directory for state files (pid, log, socket, session, stats)
+# Default: $XDG_STATE_HOME/levin/ or ~/.local/state/levin/
+# state_directory = "~/.local/state/levin"
 
-# Statistics file (lifetime stats persistence)
-statistics_file = "/var/lib/levin/statistics.json"
-
+# ---------------------------------------------------------------------------
+# REQUIRED: Disk Management
+# ---------------------------------------------------------------------------
 [disk]
-# REQUIRED: Minimum free space (supports human-readable format or bytes)
-# Examples: "10gb", "5.5GB", "1tb", or 10737418240 (bytes)
-# This is the minimum free space that must remain on the disk
+# Minimum free space that must remain on disk (supports human-readable format)
+# Examples: "1gb", "10gb", "500mb", "1tb"
 min_free = "10gb"
 
-# REQUIRED: Minimum free space as percentage of total disk (0.10 = 10%)
+# OPTIONAL: Minimum free space as percentage of total disk (0.05 = 5%)
 # The effective minimum is max(min_free, total_disk * min_free_percentage)
-min_free_percentage = 0.10
+# Default: 0.05 (5%)
+# min_free_percentage = 0.05
 
-# OPTIONAL: Maximum storage Levin can use (supports human-readable format or bytes)
-# Examples: "100gb", "1tb", or omit/comment out for unlimited
-# If set, Levin will stop downloading once its data directory reaches this size
-max_storage = "100gb"
+# OPTIONAL: Maximum storage Levin can use (supports human-readable format)
+# Examples: "100gb", "500gb", "1tb"
+# Default: 0 (unlimited - only constrained by min_free)
+# max_storage = "100gb"
 
-# How often to check disk space (in seconds)
-check_interval_seconds = 60
+# ---------------------------------------------------------------------------
+# OPTIONAL: Daemon Settings (all have defaults)
+# ---------------------------------------------------------------------------
+[daemon]
+# Log level: "trace", "debug", "info", "warn", "error", "critical"
+# Default: "info"
+# log_level = "info"
 
-[torrents]
-# How often to update seeder counts from DHT/trackers (in minutes)
-seeder_update_interval_minutes = 15
+# Whether to run when on battery power
+# Default: false (pause seeding when on battery, resume when plugged in)
+# run_on_battery = false
 
-# How often to scan watch directory for new .torrent files (in seconds)
-watch_directory_scan_interval_seconds = 30
-
-# Maximum connections per torrent
-max_connections_per_torrent = 50
-
-# Maximum upload slots per torrent
-max_upload_slots_per_torrent = 20
-
+# ---------------------------------------------------------------------------
+# OPTIONAL: Bandwidth Limits (0 = unlimited)
+# ---------------------------------------------------------------------------
 [limits]
 # Maximum download rate in KB/s (0 = unlimited)
-max_download_rate_kbps = 0
+# max_download_rate_kbps = 0
 
 # Maximum upload rate in KB/s (0 = unlimited)
-max_upload_rate_kbps = 0
+# max_upload_rate_kbps = 0
 
-# Maximum total connections across all torrents
-max_total_connections = 200
+# ---------------------------------------------------------------------------
+# OPTIONAL: WebTorrent Settings
+# ---------------------------------------------------------------------------
+[webtorrent]
+# STUN server for WebRTC NAT traversal (ICE)
+# Default: "stun.l.google.com:19302" (Google's public STUN server)
+# Other options:
+#   - stun:stun.l.google.com:19302 (Google)
+#   - stun:stun1.l.google.com:19302 (Google backup)
+#   - stun:stun.stunprotocol.org:3478 (STUN Protocol)
+# stun_server = "stun.l.google.com:19302"
 
-# Maximum active downloads (downloading state)
-max_active_downloads = 5
-
-# Maximum active seeds (seeding state, -1 = unlimited)
-max_active_seeds = -1
-
-# Maximum active torrents total
-max_active_torrents = 10
-
-[network]
-# Port to listen on for incoming connections
-listen_port = 6881
-
-# Enable DHT (Distributed Hash Table) for peer discovery
-enable_dht = true
-
-# Enable LSD (Local Service Discovery)
-enable_lsd = true
-
-# Enable UPnP for automatic port forwarding
-enable_upnp = true
-
-# Enable NAT-PMP for automatic port forwarding
-enable_natpmp = true
-
-# Enable WebRTC support (for browser-based clients)
-enable_webrtc = true
-
-# STUN server for WebRTC NAT traversal
-webrtc_stun_server = "stun:stun.l.google.com:19302"
-
-[cli]
-# Unix socket path for CLI communication
-control_socket = "/var/run/levin.sock"
-
-[statistics]
-# How often to save statistics to disk (in minutes)
-save_interval_minutes = 5
+# ---------------------------------------------------------------------------
+# Hardcoded Settings (for reference, cannot be changed in config)
+# ---------------------------------------------------------------------------
+# Network:
+#   listen_port = 6881
+#   enable_dht = true
+#   enable_lsd = true
+#   enable_upnp = true
+#   enable_natpmp = true
+#
+# Torrents:
+#   max_connections_per_torrent = 50
+#   max_upload_slots_per_torrent = 8
+#   max_total_connections = 200
+#   max_active_downloads = unlimited (-1)
+#   max_active_seeds = unlimited (-1)
+#   max_active_torrents = unlimited (-1)
+#
+# Intervals:
+#   disk_check_interval = 60 seconds
+#   seeder_update_interval = 60 minutes
+#   watch_scan_interval = 30 seconds
+#   statistics_save_interval = 5 minutes
+#
+# Derived paths (from state_directory):
+#   pid_file = <state_directory>/levin.pid
+#   log_file = <state_directory>/levin.log
+#   control_socket = <state_directory>/levin.sock
+#   session_state = <state_directory>/session.state
+#   statistics_file = <state_directory>/statistics.json

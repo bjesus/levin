@@ -1,17 +1,10 @@
 # E2E Test Configuration
 # Uses small limits (200MB) for fast testing
 
-[daemon]
-pid_file = "${TEST_DIR}/levin.pid"
-log_file = "${TEST_DIR}/levin.log"
-log_level = "debug"
-run_on_battery = true
-
 [paths]
 watch_directory = "${TEST_DIR}/torrents"
 data_directory = "${TEST_DIR}/data"
-session_state = "${TEST_DIR}/session.state"
-statistics_file = "${TEST_DIR}/statistics.json"
+state_directory = "${TEST_DIR}"
 
 [disk]
 # 200MB max storage for fast testing
@@ -19,33 +12,11 @@ max_storage = "200mb"
 # Keep 10MB free on filesystem
 min_free = "10mb"
 min_free_percentage = 0.001
-check_interval_seconds = 5
 
-[torrents]
-seeder_update_interval_minutes = 1
-watch_directory_scan_interval_seconds = 5
-max_connections_per_torrent = 10
-max_upload_slots_per_torrent = 5
+[daemon]
+log_level = "debug"
+run_on_battery = true
 
 [limits]
 max_download_rate_kbps = 0
 max_upload_rate_kbps = 0
-max_total_connections = 50
-max_active_downloads = 3
-max_active_seeds = -1
-max_active_torrents = 5
-
-[network]
-listen_port = 16881
-enable_dht = true
-enable_lsd = true
-enable_upnp = false
-enable_natpmp = false
-enable_webrtc = false
-webrtc_stun_server = "stun:stun.l.google.com:19302"
-
-[cli]
-control_socket = "${TEST_DIR}/levin.sock"
-
-[statistics]
-save_interval_minutes = 1

@@ -18,103 +18,46 @@ std::string get_default_config_path() {
 }
 
 std::string get_default_config_content() {
-    return R"([daemon]
-# PID file location (default: $XDG_STATE_HOME/levin/levin.pid or ~/.local/state/levin/levin.pid)
-pid_file = "$XDG_STATE_HOME/levin/levin.pid"
-
-# Log file location (default: $XDG_STATE_HOME/levin/levin.log or ~/.local/state/levin/levin.log)
-log_file = "$XDG_STATE_HOME/levin/levin.log"
-
-# Log level: trace, debug, info, warn, error, critical
-log_level = "info"
-
-# Run on battery power (false = pause when on battery, resume when plugged in)
-run_on_battery = false
+    return R"(# Levin Configuration
+# Only required settings: watch_directory, data_directory, min_free
 
 [paths]
-# Directory to watch for .torrent files (default: $XDG_CONFIG_HOME/levin/torrents or ~/.config/levin/torrents)
+# Directory to watch for .torrent files
 watch_directory = "$XDG_CONFIG_HOME/levin/torrents"
 
-# Directory to store downloaded data (default: $XDG_CACHE_HOME/levin/data or ~/.cache/levin/data)
+# Directory to store downloaded data
 data_directory = "$XDG_CACHE_HOME/levin/data"
 
-# Session state file (default: $XDG_STATE_HOME/levin/session.state or ~/.local/state/levin/session.state)
-session_state = "$XDG_STATE_HOME/levin/session.state"
-
-# Statistics file (default: $XDG_STATE_HOME/levin/statistics.json or ~/.local/state/levin/statistics.json)
-statistics_file = "$XDG_STATE_HOME/levin/statistics.json"
+# State directory for pid, log, socket, session, and stats files
+# Default: $XDG_STATE_HOME/levin/
+# state_directory = "$XDG_STATE_HOME/levin"
 
 [disk]
-# Minimum free space (supports: "100mb", "5gb", "1tb" or raw bytes)
-min_free_space = "1gb"
+# Minimum free space (supports: "100mb", "5gb", "1tb")
+min_free = "1gb"
 
 # Minimum free space as percentage (0.05 = 5%)
-min_free_percentage = 0.05
+# Default: 0.05
+# min_free_percentage = 0.05
 
-# How often to check disk space (seconds)
-check_interval_seconds = 60
+# Maximum storage Levin can use (0 or omit = unlimited)
+# max_storage = "100gb"
 
-[torrents]
-# How often to update seeder counts (minutes)
-seeder_update_interval_minutes = 60
+[daemon]
+# Log level: trace, debug, info, warn, error, critical
+# Default: "info"
+# log_level = "info"
 
-# How often to scan watch directory (seconds)
-watch_directory_scan_interval_seconds = 30
-
-# Maximum connections per torrent
-max_connections_per_torrent = 50
-
-# Maximum upload slots per torrent
-max_upload_slots_per_torrent = 8
+# Run on battery power (false = pause when on battery)
+# Default: false
+# run_on_battery = false
 
 [limits]
 # Maximum download rate in KB/s (0 = unlimited)
-max_download_rate_kbps = 0
+# max_download_rate_kbps = 0
 
 # Maximum upload rate in KB/s (0 = unlimited)
-max_upload_rate_kbps = 0
-
-# Maximum total connections
-max_total_connections = 200
-
-# Maximum active downloads
-max_active_downloads = 4
-
-# Maximum active seeds (-1 = unlimited)
-max_active_seeds = -1
-
-# Maximum active torrents total
-max_active_torrents = 8
-
-[network]
-# Port to listen on
-listen_port = 6881
-
-# Enable DHT (Distributed Hash Table)
-enable_dht = true
-
-# Enable LSD (Local Service Discovery)
-enable_lsd = true
-
-# Enable UPnP (Universal Plug and Play)
-enable_upnp = true
-
-# Enable NAT-PMP
-enable_natpmp = true
-
-# Enable WebRTC for WebTorrent support
-enable_webrtc = false
-
-# STUN server for WebRTC (required if enable_webrtc = true)
-webrtc_stun_server = "stun:stun.l.google.com:19302"
-
-[cli]
-# Unix socket for CLI communication (default: $XDG_STATE_HOME/levin/levin.sock or ~/.local/state/levin/levin.sock)
-control_socket = "$XDG_STATE_HOME/levin/levin.sock"
-
-[statistics]
-# How often to save statistics to disk (minutes)
-save_interval_minutes = 5
+# max_upload_rate_kbps = 0
 )";
 }
 
@@ -257,7 +200,7 @@ int run_daemon(int argc, char** argv) {
         }
 
         // Initialize logger
-        Logger::init(config.daemon.log_file, config.daemon.log_level);
+        Logger::init(config.log_file(), config.daemon.log_level);
         
         LOG_INFO("=================================================");
         LOG_INFO("Levin v{} starting", PROJECT_VERSION);

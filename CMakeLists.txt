@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(levin VERSION 0.4.0 LANGUAGES CXX)
+project(levin VERSION 0.4.1 LANGUAGES CXX)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -17,6 +17,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Option to use system libtorrent (without WebTorrent) or build from source (with WebTorrent)
+option(USE_SYSTEM_LIBTORRENT "Use system libtorrent instead of building from source" OFF)
+
 # Find required system packages
 # Boost: Use BoostConfig.cmake if available (Boost >= 1.70)
 if(POLICY CMP0167)
@@ -33,10 +36,83 @@ endif()
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(CURL REQUIRED)
-
-# Find libtorrent-rasterbar
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(LIBTORRENT REQUIRED libtorrent-rasterbar>=2.0)
+
+# Fetch external dependencies
+include(FetchContent)
+
+# nlohmann_json - JSON library (fetch first to avoid conflicts with libtorrent's deps)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(nlohmann_json)
+
+if(USE_SYSTEM_LIBTORRENT)
+    # Use system libtorrent (likely without WebTorrent support)
+    pkg_check_modules(LIBTORRENT REQUIRED libtorrent-rasterbar>=2.0)
+    set(LIBTORRENT_TARGETS ${LIBTORRENT_LIBRARIES})
+    set(WEBTORRENT_ENABLED FALSE)
+    message(STATUS "Using system libtorrent (WebTorrent likely NOT available)")
+else()
+    # Build libtorrent from source with WebTorrent support
+    message(STATUS "Building libtorrent from source with WebTorrent support")
+    
+    # libtorrent build options - set before FetchContent
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(deprecated-functions OFF CACHE BOOL "" FORCE)
+    set(webtorrent ON CACHE BOOL "" FORCE)  # Enable WebTorrent!
+    set(build_examples OFF CACHE BOOL "" FORCE)
+    set(build_tests OFF CACHE BOOL "" FORCE)
+    set(build_tools OFF CACHE BOOL "" FORCE)
+    set(python-bindings OFF CACHE BOOL "" FORCE)
+    set(python-egg-info OFF CACHE BOOL "" FORCE)
+    
+    # libdatachannel options (bundled with libtorrent)
+    set(NO_EXAMPLES ON CACHE BOOL "" FORCE)
+    set(NO_TESTS ON CACHE BOOL "" FORCE)
+    set(USE_SYSTEM_JSON ON CACHE BOOL "" FORCE)  # Use our nlohmann_json
+    
+    # libtorrent with WebTorrent enabled
+    # Must use master branch - WebTorrent is not in any release yet
+    # libtorrent bundles libdatachannel when webtorrent=ON
+    FetchContent_Declare(
+        libtorrent
+        GIT_REPOSITORY https://github.com/arvidn/libtorrent.git
+        GIT_TAG master
+        GIT_SUBMODULES_RECURSE ON
+    )
+    
+    # Workaround: Populate but don't add_subdirectory yet
+    FetchContent_GetProperties(libtorrent)
+    if(NOT libtorrent_POPULATED)
+        FetchContent_Populate(libtorrent)
+        
+        # Override install/export to no-ops for libtorrent scope
+        macro(install)
+        endmacro()
+        macro(export)
+        endmacro()
+        
+        add_subdirectory(${libtorrent_SOURCE_DIR} ${libtorrent_BINARY_DIR} EXCLUDE_FROM_ALL)
+        
+        # Restore install/export
+        macro(install)
+            _install(${ARGV})
+        endmacro()
+        macro(export)
+            _export(${ARGV})
+        endmacro()
+    endif()
+    
+    set(LIBTORRENT_TARGETS torrent-rasterbar)
+    set(WEBTORRENT_ENABLED TRUE)
+    
+    # Get libtorrent include directories
+    get_target_property(LIBTORRENT_INCLUDE_DIRS torrent-rasterbar INTERFACE_INCLUDE_DIRECTORIES)
+endif()
 
 # Platform-specific dependencies
 set(POWER_MONITOR_AVAILABLE FALSE)
@@ -61,9 +137,6 @@ elseif(APPLE)
     endif()
 endif()
 
-# Fetch external dependencies
-include(FetchContent)
-
 # toml11 - Header-only TOML parser
 FetchContent_Declare(
     toml11
@@ -82,29 +155,27 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(spdlog)
 
-# nlohmann_json - JSON library
-FetchContent_Declare(
-    nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
-)
-FetchContent_MakeAvailable(nlohmann_json)
+# nlohmann_json already fetched above
 
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/src
     ${Boost_INCLUDE_DIRS}
-    ${LIBTORRENT_INCLUDE_DIRS}
     ${OPENSSL_INCLUDE_DIR}
     ${CURL_INCLUDE_DIRS}
     ${toml11_SOURCE_DIR}
     ${GLIB_INCLUDE_DIRS}
 )
 
-# Link directories
-link_directories(
-    ${LIBTORRENT_LIBRARY_DIRS}
-)
+if(USE_SYSTEM_LIBTORRENT)
+    include_directories(${LIBTORRENT_INCLUDE_DIRS})
+    link_directories(${LIBTORRENT_LIBRARY_DIRS})
+endif()
+
+# Define WEBTORRENT_ENABLED for code
+if(WEBTORRENT_ENABLED)
+    add_compile_definitions(WEBTORRENT_ENABLED=1)
+endif()
 
 # Unified binary source files (includes both daemon and CLI client)
 set(LEVIN_SOURCES
@@ -130,7 +201,7 @@ add_executable(levin ${LEVIN_SOURCES})
 
 target_link_libraries(levin
     ${Boost_LIBRARIES}
-    ${LIBTORRENT_LIBRARIES}
+    ${LIBTORRENT_TARGETS}
     ${OPENSSL_LIBRARIES}
     CURL::libcurl
     Threads::Threads
@@ -145,9 +216,6 @@ if(UNIX AND NOT APPLE)
 elseif(APPLE)
     target_link_libraries(levin ${IOKIT_LIBRARY} ${COREFOUNDATION_LIBRARY})
 endif()
-
-# CLI client is now integrated into main binary
-# add_subdirectory(cli)
 
 # Tests (optional)
 option(BUILD_TESTS "Build tests" ON)
@@ -177,13 +245,22 @@ message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "")
 message(STATUS "Dependencies:")
 message(STATUS "  Boost: ${Boost_VERSION}")
-message(STATUS "  libtorrent-rasterbar: ${LIBTORRENT_VERSION}")
+if(USE_SYSTEM_LIBTORRENT)
+    message(STATUS "  libtorrent-rasterbar: ${LIBTORRENT_VERSION} (system)")
+else()
+    message(STATUS "  libtorrent-rasterbar: master (bundled, WebTorrent enabled)")
+endif()
 message(STATUS "  OpenSSL: ${OPENSSL_VERSION}")
 message(STATUS "  toml11: v3.8.1")
 message(STATUS "  spdlog: v1.12.0")
 message(STATUS "  nlohmann_json: v3.11.3")
 message(STATUS "")
+message(STATUS "Features:")
+message(STATUS "  WebTorrent: ${WEBTORRENT_ENABLED}")
+message(STATUS "  Power Monitoring: ${POWER_MONITOR_AVAILABLE}")
+message(STATUS "")
 message(STATUS "Build Options:")
 message(STATUS "  Build Tests: ${BUILD_TESTS}")
+message(STATUS "  Use System libtorrent: ${USE_SYSTEM_LIBTORRENT}")
 message(STATUS "==============================")
 message(STATUS "")

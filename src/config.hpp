@@ -8,70 +8,49 @@ namespace levin {
 /**
  * Configuration structure for the Levin daemon.
  * Loads settings from TOML configuration file.
+ * 
+ * Simplified config - most settings have sensible defaults.
+ * Only required settings: watch_directory, data_directory, min_free
  */
 struct Config {
-    // Daemon settings
+    // Paths (REQUIRED: watch_directory, data_directory)
     struct {
-        std::string pid_file;
-        std::string log_file;
-        std::string log_level;
-        bool run_on_battery;
-    } daemon;
-
-    // Path settings
-    struct {
-        std::string watch_directory;
-        std::string data_directory;
-        std::string session_state;
-        std::string statistics_file;
+        std::string watch_directory;    // Directory to watch for .torrent files
+        std::string data_directory;     // Directory to store downloaded data
+        std::string state_directory;    // Directory for state files (pid, log, socket, etc.)
+                                        // Default: $XDG_STATE_HOME/levin/
     } paths;
 
-    // Disk management settings
+    // Disk management settings (REQUIRED: min_free)
     struct {
-        uint64_t min_free;              // Minimum free space in bytes (REQUIRED)
-        double min_free_percentage;     // Minimum free space as percentage (REQUIRED)
-        uint64_t max_storage;           // Maximum storage Levin can use in bytes (OPTIONAL, 0 = unlimited)
-        int check_interval_seconds;
+        uint64_t min_free;              // Minimum free space in bytes
+        double min_free_percentage;     // Minimum free space as percentage (default: 0.05)
+        uint64_t max_storage;           // Maximum storage Levin can use (0 = unlimited)
     } disk;
 
-    // Torrent settings
+    // Daemon settings (all have defaults)
     struct {
-        int seeder_update_interval_minutes;
-        int watch_directory_scan_interval_seconds;
-        int max_connections_per_torrent;
-        int max_upload_slots_per_torrent;
-    } torrents;
+        std::string log_level;          // Default: "info"
+        bool run_on_battery;            // Default: false
+    } daemon;
 
-    // Bandwidth and connection limits
+    // Bandwidth limits (all optional, 0 = unlimited)
     struct {
-        int max_download_rate_kbps;
-        int max_upload_rate_kbps;
-        int max_total_connections;
-        int max_active_downloads;
-        int max_active_seeds;
-        int max_active_torrents;
+        int max_download_rate_kbps;     // Default: 0 (unlimited)
+        int max_upload_rate_kbps;       // Default: 0 (unlimited)
     } limits;
-
-    // Network settings
+    
+    // WebTorrent settings (all optional)
     struct {
-        int listen_port;
-        bool enable_dht;
-        bool enable_lsd;
-        bool enable_upnp;
-        bool enable_natpmp;
-        bool enable_webrtc;
-        std::string webrtc_stun_server;
-    } network;
+        std::string stun_server;        // Default: "stun.l.google.com:19302" (Google)
+    } webtorrent;
 
-    // CLI settings
-    struct {
-        std::string control_socket;
-    } cli;
-
-    // Statistics settings
-    struct {
-        int save_interval_minutes;
-    } statistics;
+    // Derived paths (computed from state_directory)
+    std::string pid_file() const;
+    std::string log_file() const;
+    std::string control_socket() const;
+    std::string session_state() const;
+    std::string statistics_file() const;
 
     /**
      * Load configuration from a TOML file.
@@ -97,6 +76,33 @@ struct Config {
      * @return Effective minimum free space in bytes
      */
     uint64_t get_effective_min_free_space(uint64_t total_disk_bytes) const;
+    
+    // =========================================================================
+    // Hardcoded constants (no config needed)
+    // =========================================================================
+    
+    // Network settings - always enabled for best connectivity
+    static constexpr int listen_port = 6881;
+    static constexpr bool enable_dht = true;
+    static constexpr bool enable_lsd = true;
+    static constexpr bool enable_upnp = true;
+    static constexpr bool enable_natpmp = true;
+    
+    // Torrent settings - sensible defaults
+    static constexpr int max_connections_per_torrent = 50;
+    static constexpr int max_upload_slots_per_torrent = 8;
+    static constexpr int max_total_connections = 200;
+    
+    // All torrents active - no artificial limits
+    static constexpr int max_active_downloads = -1;  // unlimited
+    static constexpr int max_active_seeds = -1;      // unlimited
+    static constexpr int max_active_torrents = -1;   // unlimited
+    
+    // Timing intervals
+    static constexpr int disk_check_interval_seconds = 60;
+    static constexpr int seeder_update_interval_minutes = 60;
+    static constexpr int watch_scan_interval_seconds = 30;
+    static constexpr int statistics_save_interval_minutes = 5;
 };
 
 } // namespace levin

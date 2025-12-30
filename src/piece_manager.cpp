@@ -156,14 +156,15 @@ void PieceManager::build_download_queue() {
         
         // Check each piece
         for (int i = 0; i < metrics.total_pieces; ++i) {
-            if (metrics.handle.have_piece(i)) {
+            lt::piece_index_t piece_idx(i);
+            if (metrics.handle.have_piece(piece_idx)) {
                 continue;  // Skip pieces we already have
             }
             
             PieceInfo piece;
             piece.info_hash = info_hash;
             piece.piece_index = i;
-            piece.size_bytes = torrent_info->piece_size(i);
+            piece.size_bytes = torrent_info->piece_size(piece_idx);
             piece.have_piece = false;
             piece.rarity_score = get_piece_rarity(metrics.handle, i);
             piece.priority = calculate_piece_priority(metrics, i, piece.rarity_score);
@@ -182,14 +183,15 @@ void PieceManager::build_deletion_queue() {
         
         // Check each piece we have
         for (int i = 0; i < metrics.total_pieces; ++i) {
-            if (!metrics.handle.have_piece(i)) {
+            lt::piece_index_t piece_idx(i);
+            if (!metrics.handle.have_piece(piece_idx)) {
                 continue;  // Skip pieces we don't have
             }
             
             PieceInfo piece;
             piece.info_hash = info_hash;
             piece.piece_index = i;
-            piece.size_bytes = torrent_info->piece_size(i);
+            piece.size_bytes = torrent_info->piece_size(piece_idx);
             piece.have_piece = true;
             piece.rarity_score = get_piece_rarity(metrics.handle, i);
             piece.priority = calculate_piece_priority(metrics, i, piece.rarity_score);
@@ -232,8 +234,9 @@ void PieceManager::emergency_pause_downloads(const std::string& reason) {
         if (!torrent_info) continue;
         
         for (int i = 0; i < metrics.total_pieces; ++i) {
-            if (!metrics.handle.have_piece(i)) {
-                metrics.handle.piece_priority(i, lt::dont_download);
+            lt::piece_index_t piece_idx(i);
+            if (!metrics.handle.have_piece(piece_idx)) {
+                metrics.handle.piece_priority(piece_idx, lt::dont_download);
             }
         }
     }
@@ -269,7 +272,8 @@ void PieceManager::download_pieces(uint64_t available_bytes) {
         }
         
         // Set piece priority to high
-        it->second.handle.piece_priority(piece.piece_index, lt::top_priority);
+        lt::piece_index_t piece_idx(piece.piece_index);
+        it->second.handle.piece_priority(piece_idx, lt::top_priority);
         
         allocated += piece.size_bytes;
         pieces_requested++;

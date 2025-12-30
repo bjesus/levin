@@ -10,7 +10,7 @@ namespace levin {
 
 Statistics::Statistics(const Config& config)
     : config_(config)
-    , stats_file_(config.paths.statistics_file)
+    , stats_file_(config.statistics_file())
     , stats_{}
     , last_reported_download_(0)
     , last_reported_upload_(0) {

@@ -37,7 +37,7 @@ static void signal_handler(int signum) {
 Daemon::Daemon(const Config& config)
     : config_(config)
     , running_(false)
-    , pid_file_(config.daemon.pid_file) {
+    , pid_file_(config.pid_file()) {
     g_daemon_instance = this;
 }
 
@@ -308,7 +308,7 @@ void Daemon::run() {
         cli_server_->process_commands();
 
         // Update torrent metrics periodically (every 15 minutes)
-        auto metrics_interval = std::chrono::minutes(config_.torrents.seeder_update_interval_minutes);
+        auto metrics_interval = std::chrono::minutes(Config::seeder_update_interval_minutes);
         if (now - last_metrics_update_ >= metrics_interval) {
             piece_manager_->update_metrics();
             piece_manager_->rebuild_queues();
@@ -316,7 +316,7 @@ void Daemon::run() {
         }
 
         // Rebalance disk usage periodically (configurable)
-        auto rebalance_interval = std::chrono::seconds(config_.disk.check_interval_seconds);
+        auto rebalance_interval = std::chrono::seconds(Config::disk_check_interval_seconds);
         if (now - last_rebalance_ >= rebalance_interval) {
             // Update metrics (but don't rebuild queues)
             piece_manager_->update_metrics();
@@ -339,7 +339,7 @@ void Daemon::run() {
         }
 
         // Save statistics periodically
-        auto stats_interval = std::chrono::minutes(config_.statistics.save_interval_minutes);
+        auto stats_interval = std::chrono::minutes(Config::statistics_save_interval_minutes);
         if (now - last_stats_save_ >= stats_interval) {
             uint64_t downloaded, uploaded;
             int peers;

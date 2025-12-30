@@ -5,20 +5,22 @@
 
 # Create isolated test environment
 setup_test_environment() {
-    # Create unique test directory
-    export TEST_DIR=$(mktemp -d "/tmp/levin-e2e-XXXXXX")
+    local config_template="${1:-test_config.toml.example}"
+    local run_on_battery="${2:-true}"
+    local max_storage_mb="${3:-200}"
+    
+    # Create a fresh test directory
+    export TEST_DIR=$(mktemp -d /tmp/levin-e2e-XXXXXX)
+    export TEST_DATA_DIR="${TEST_DIR}/data"
+    export TEST_TORRENTS_DIR="${TEST_DIR}/torrents"
     export TEST_SOCKET="${TEST_DIR}/levin.sock"
-    
-    # Create subdirectories
-    mkdir -p "${TEST_DIR}/torrents"
-    mkdir -p "${TEST_DIR}/data"
-    
-    # Generate config from template
-    local config_template="${E2E_DIR}/test_config.toml.example"
     export TEST_CONFIG="${TEST_DIR}/levin.toml"
     
-    # Replace ${TEST_DIR} placeholder in config
-    sed "s|\${TEST_DIR}|${TEST_DIR}|g" "${config_template}" > "${TEST_CONFIG}"
+    # Get script directory
+    local SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+    
+    # Generate config from template
+    sed "s|\${TEST_DIR}|${TEST_DIR}|g" "${SCRIPT_DIR}/${config_template}" > "${TEST_CONFIG}"
     
     echo "Test environment: ${TEST_DIR}"
 }

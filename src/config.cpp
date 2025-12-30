@@ -13,10 +13,6 @@ namespace {
      * Parse a human-readable size string like "100mb", "5gb", "1tb" into bytes.
      * Supports: b, kb, mb, gb, tb (case-insensitive)
      * Binary units: 1KB = 1024 bytes, 1MB = 1024KB, etc.
-     * 
-     * @param size_str Size string (e.g., "100mb", "5GB", "1024")
-     * @return Size in bytes
-     * @throws std::runtime_error if format is invalid
      */
     uint64_t parse_size(const std::string& size_str) {
         if (size_str.empty()) {
@@ -131,139 +127,134 @@ namespace {
         
         return result;
     }
+    
+    std::string get_default_state_directory() {
+        const char* state_home = std::getenv("XDG_STATE_HOME");
+        if (state_home) {
+            return std::string(state_home) + "/levin";
+        }
+        const char* home = std::getenv("HOME");
+        if (home) {
+            return std::string(home) + "/.local/state/levin";
+        }
+        return "/tmp/levin";
+    }
+}
+
+// Derived path implementations
+std::string Config::pid_file() const {
+    return paths.state_directory + "/levin.pid";
+}
+
+std::string Config::log_file() const {
+    return paths.state_directory + "/levin.log";
+}
+
+std::string Config::control_socket() const {
+    return paths.state_directory + "/levin.sock";
+}
+
+std::string Config::session_state() const {
+    return paths.state_directory + "/session.state";
+}
+
+std::string Config::statistics_file() const {
+    return paths.state_directory + "/statistics.json";
 }
 
 Config Config::load(const std::string& path) {
     Config config;
+    
+    // Set defaults
+    config.paths.state_directory = get_default_state_directory();
+    config.disk.min_free = 0;
+    config.disk.min_free_percentage = 0.05;  // 5% default
+    config.disk.max_storage = 0;  // unlimited
+    config.daemon.log_level = "info";
+    config.daemon.run_on_battery = false;
+    config.limits.max_download_rate_kbps = 0;  // unlimited
+    config.limits.max_upload_rate_kbps = 0;    // unlimited
+    config.webtorrent.stun_server = "stun.l.google.com:19302";  // Google's public STUN
 
     try {
-        // Parse TOML file
         const auto data = toml::parse(path);
 
-        // Load daemon settings
-        if (data.contains("daemon")) {
-            const auto& daemon = toml::find(data, "daemon");
-            config.daemon.pid_file = expand_path(toml::find<std::string>(daemon, "pid_file"));
-            config.daemon.log_file = expand_path(toml::find<std::string>(daemon, "log_file"));
-            config.daemon.log_level = toml::find<std::string>(daemon, "log_level");
-            config.daemon.run_on_battery = daemon.contains("run_on_battery") ? 
-                toml::find<bool>(daemon, "run_on_battery") : false;
-        }
-
-        // Load path settings
+        // Load paths (REQUIRED: watch_directory, data_directory)
         if (data.contains("paths")) {
-            const auto& paths = toml::find(data, "paths");
-            config.paths.watch_directory = expand_path(toml::find<std::string>(paths, "watch_directory"));
-            config.paths.data_directory = expand_path(toml::find<std::string>(paths, "data_directory"));
-            config.paths.session_state = expand_path(toml::find<std::string>(paths, "session_state"));
-            config.paths.statistics_file = expand_path(toml::find<std::string>(paths, "statistics_file"));
+            const auto& paths_section = toml::find(data, "paths");
+            
+            if (paths_section.contains("watch_directory")) {
+                config.paths.watch_directory = expand_path(toml::find<std::string>(paths_section, "watch_directory"));
+            }
+            if (paths_section.contains("data_directory")) {
+                config.paths.data_directory = expand_path(toml::find<std::string>(paths_section, "data_directory"));
+            }
+            if (paths_section.contains("state_directory")) {
+                config.paths.state_directory = expand_path(toml::find<std::string>(paths_section, "state_directory"));
+            }
         }
 
-        // Load disk settings
+        // Load disk settings (REQUIRED: min_free)
         if (data.contains("disk")) {
-            const auto& disk = toml::find(data, "disk");
+            const auto& disk_section = toml::find(data, "disk");
             
-            // REQUIRED: min_free (supports human-readable or bytes)
-            // Also support old names for backward compatibility
-            if (disk.contains("min_free")) {
-                const auto& value = disk.at("min_free");
+            // min_free (supports human-readable or bytes)
+            if (disk_section.contains("min_free")) {
+                const auto& value = disk_section.at("min_free");
                 if (value.is_integer()) {
                     config.disk.min_free = value.as_integer();
                 } else if (value.is_string()) {
                     config.disk.min_free = parse_size(value.as_string());
-                } else {
-                    throw std::runtime_error("min_free must be an integer or string");
                 }
-            } else if (disk.contains("min_free_space")) {
-                // Backward compatibility
-                const auto& value = disk.at("min_free_space");
-                if (value.is_integer()) {
-                    config.disk.min_free = value.as_integer();
-                } else if (value.is_string()) {
-                    config.disk.min_free = parse_size(value.as_string());
-                } else {
-                    throw std::runtime_error("min_free_space must be an integer or string");
-                }
-            } else if (disk.contains("min_free_bytes")) {
-                // Backward compatibility
-                const auto& value = disk.at("min_free_bytes");
-                if (value.is_integer()) {
-                    config.disk.min_free = value.as_integer();
-                } else if (value.is_string()) {
-                    config.disk.min_free = parse_size(value.as_string());
-                } else {
-                    throw std::runtime_error("min_free_bytes must be an integer or string");
-                }
-            } else {
-                throw std::runtime_error("disk.min_free is required");
             }
             
-            // REQUIRED: min_free_percentage
-            config.disk.min_free_percentage = toml::find<double>(disk, "min_free_percentage");
+            // min_free_percentage (optional, default 5%)
+            if (disk_section.contains("min_free_percentage")) {
+                config.disk.min_free_percentage = toml::find<double>(disk_section, "min_free_percentage");
+            }
             
-            // OPTIONAL: max_storage (0 or omitted = unlimited)
-            if (disk.contains("max_storage")) {
-                const auto& value = disk.at("max_storage");
+            // max_storage (optional, 0 = unlimited)
+            if (disk_section.contains("max_storage")) {
+                const auto& value = disk_section.at("max_storage");
                 if (value.is_integer()) {
                     config.disk.max_storage = value.as_integer();
                 } else if (value.is_string()) {
                     config.disk.max_storage = parse_size(value.as_string());
-                } else {
-                    throw std::runtime_error("max_storage must be an integer or string");
                 }
-            } else {
-                config.disk.max_storage = 0; // Unlimited
             }
+        }
+
+        // Load daemon settings (all optional)
+        if (data.contains("daemon")) {
+            const auto& daemon_section = toml::find(data, "daemon");
             
-            config.disk.check_interval_seconds = toml::find<int>(disk, "check_interval_seconds");
+            if (daemon_section.contains("log_level")) {
+                config.daemon.log_level = toml::find<std::string>(daemon_section, "log_level");
+            }
+            if (daemon_section.contains("run_on_battery")) {
+                config.daemon.run_on_battery = toml::find<bool>(daemon_section, "run_on_battery");
+            }
         }
 
-        // Load torrent settings
-        if (data.contains("torrents")) {
-            const auto& torrents = toml::find(data, "torrents");
-            config.torrents.seeder_update_interval_minutes = 
-                toml::find<int>(torrents, "seeder_update_interval_minutes");
-            config.torrents.watch_directory_scan_interval_seconds = 
-                toml::find<int>(torrents, "watch_directory_scan_interval_seconds");
-            config.torrents.max_connections_per_torrent = 
-                toml::find<int>(torrents, "max_connections_per_torrent");
-            config.torrents.max_upload_slots_per_torrent = 
-                toml::find<int>(torrents, "max_upload_slots_per_torrent");
-        }
-
-        // Load limits
+        // Load bandwidth limits (all optional)
         if (data.contains("limits")) {
-            const auto& limits = toml::find(data, "limits");
-            config.limits.max_download_rate_kbps = toml::find<int>(limits, "max_download_rate_kbps");
-            config.limits.max_upload_rate_kbps = toml::find<int>(limits, "max_upload_rate_kbps");
-            config.limits.max_total_connections = toml::find<int>(limits, "max_total_connections");
-            config.limits.max_active_downloads = toml::find<int>(limits, "max_active_downloads");
-            config.limits.max_active_seeds = toml::find<int>(limits, "max_active_seeds");
-            config.limits.max_active_torrents = toml::find<int>(limits, "max_active_torrents");
+            const auto& limits_section = toml::find(data, "limits");
+            
+            if (limits_section.contains("max_download_rate_kbps")) {
+                config.limits.max_download_rate_kbps = toml::find<int>(limits_section, "max_download_rate_kbps");
+            }
+            if (limits_section.contains("max_upload_rate_kbps")) {
+                config.limits.max_upload_rate_kbps = toml::find<int>(limits_section, "max_upload_rate_kbps");
+            }
         }
-
-        // Load network settings
-        if (data.contains("network")) {
-            const auto& network = toml::find(data, "network");
-            config.network.listen_port = toml::find<int>(network, "listen_port");
-            config.network.enable_dht = toml::find<bool>(network, "enable_dht");
-            config.network.enable_lsd = toml::find<bool>(network, "enable_lsd");
-            config.network.enable_upnp = toml::find<bool>(network, "enable_upnp");
-            config.network.enable_natpmp = toml::find<bool>(network, "enable_natpmp");
-            config.network.enable_webrtc = toml::find<bool>(network, "enable_webrtc");
-            config.network.webrtc_stun_server = toml::find_or<std::string>(network, "webrtc_stun_server", "stun:stun.l.google.com:19302");
-        }
-
-        // Load CLI settings
-        if (data.contains("cli")) {
-            const auto& cli = toml::find(data, "cli");
-            config.cli.control_socket = expand_path(toml::find<std::string>(cli, "control_socket"));
-        }
-
-        // Load statistics settings
-        if (data.contains("statistics")) {
-            const auto& statistics = toml::find(data, "statistics");
-            config.statistics.save_interval_minutes = toml::find<int>(statistics, "save_interval_minutes");
+        
+        // Load WebTorrent settings (all optional)
+        if (data.contains("webtorrent")) {
+            const auto& webtorrent_section = toml::find(data, "webtorrent");
+            
+            if (webtorrent_section.contains("stun_server")) {
+                config.webtorrent.stun_server = toml::find<std::string>(webtorrent_section, "stun_server");
+            }
         }
 
     } catch (const std::exception& e) {
@@ -274,11 +265,14 @@ Config Config::load(const std::string& path) {
 }
 
 bool Config::validate() const {
-    // Validate daemon settings
-    if (daemon.pid_file.empty()) {
+    // Required paths
+    if (paths.watch_directory.empty()) {
         return false;
     }
-    if (daemon.log_file.empty()) {
+    if (paths.data_directory.empty()) {
+        return false;
+    }
+    if (paths.state_directory.empty()) {
         return false;
     }
 
@@ -291,72 +285,16 @@ bool Config::validate() const {
         return false;
     }
 
-    // Validate paths
-    if (paths.watch_directory.empty() || paths.data_directory.empty()) {
-        return false;
-    }
-    if (paths.session_state.empty() || paths.statistics_file.empty()) {
-        return false;
-    }
-
-    // Validate disk settings
+    // Validate disk settings - must have at least one minimum
     if (disk.min_free == 0 && disk.min_free_percentage == 0.0) {
-        return false; // Must have at least one minimum
+        return false;
     }
     if (disk.min_free_percentage < 0.0 || disk.min_free_percentage > 1.0) {
         return false;
     }
-    if (disk.check_interval_seconds <= 0) {
-        return false;
-    }
 
-    // Validate torrent settings
-    if (torrents.seeder_update_interval_minutes <= 0) {
-        return false;
-    }
-    if (torrents.watch_directory_scan_interval_seconds <= 0) {
-        return false;
-    }
-    if (torrents.max_connections_per_torrent <= 0) {
-        return false;
-    }
-    if (torrents.max_upload_slots_per_torrent <= 0) {
-        return false;
-    }
-
-    // Validate limits (can be 0 for unlimited)
+    // Validate bandwidth limits (can be 0 for unlimited, but not negative)
     if (limits.max_download_rate_kbps < 0 || limits.max_upload_rate_kbps < 0) {
-        return false;
-    }
-    if (limits.max_total_connections <= 0) {
-        return false;
-    }
-    if (limits.max_active_downloads <= 0) {
-        return false;
-    }
-    // max_active_seeds can be -1 for unlimited
-    if (limits.max_active_seeds < -1) {
-        return false;
-    }
-    if (limits.max_active_torrents <= 0) {
-        return false;
-    }
-
-    // Validate network settings
-    if (network.listen_port <= 0 || network.listen_port > 65535) {
-        return false;
-    }
-    if (network.enable_webrtc && network.webrtc_stun_server.empty()) {
-        return false;
-    }
-
-    // Validate CLI settings
-    if (cli.control_socket.empty()) {
-        return false;
-    }
-
-    // Validate statistics settings
-    if (statistics.save_interval_minutes <= 0) {
         return false;
     }
 

@@ -10,6 +10,7 @@
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/write_resume_data.hpp>
 #include <libtorrent/read_resume_data.hpp>
+#include <libtorrent/load_torrent.hpp>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -21,7 +22,7 @@ namespace levin {
 Session::Session(const Config& config)
     : config_(config)
     , data_directory_(config.paths.data_directory)
-    , session_state_file_(config.paths.session_state) {
+    , session_state_file_(config.session_state()) {
 }
 
 Session::~Session() {
@@ -44,9 +45,14 @@ bool Session::start() {
         load_session_state();
 
         LOG_INFO("Libtorrent session started successfully");
-        LOG_INFO("WebRTC enabled: {}", config_.network.enable_webrtc);
-        LOG_INFO("DHT enabled: {}", config_.network.enable_dht);
-        LOG_INFO("Listening on port: {}", config_.network.listen_port);
+        LOG_INFO("DHT enabled: {}", Config::enable_dht);
+        LOG_INFO("Listening on port: {}", Config::listen_port);
+#ifdef WEBTORRENT_ENABLED
+        LOG_INFO("WebTorrent support: ENABLED");
+        LOG_INFO("WebTorrent STUN server: {}", config_.webtorrent.stun_server);
+#else
+        LOG_INFO("WebTorrent support: DISABLED");
+#endif
 
         return true;
 
@@ -80,13 +86,13 @@ void Session::configure_session() {
                     lt::alert_category::status |
                     lt::alert_category::storage);
 
-    // Connection limits
-    settings.set_int(lt::settings_pack::connections_limit, config_.limits.max_total_connections);
-    settings.set_int(lt::settings_pack::active_downloads, config_.limits.max_active_downloads);
-    settings.set_int(lt::settings_pack::active_seeds, config_.limits.max_active_seeds);
-    settings.set_int(lt::settings_pack::active_limit, config_.limits.max_active_torrents);
+    // Connection limits (from hardcoded constants)
+    settings.set_int(lt::settings_pack::connections_limit, Config::max_total_connections);
+    settings.set_int(lt::settings_pack::active_downloads, Config::max_active_downloads);
+    settings.set_int(lt::settings_pack::active_seeds, Config::max_active_seeds);
+    settings.set_int(lt::settings_pack::active_limit, Config::max_active_torrents);
 
-    // Bandwidth limits
+    // Bandwidth limits (from config)
     if (config_.limits.max_download_rate_kbps > 0) {
         settings.set_int(lt::settings_pack::download_rate_limit, 
                         config_.limits.max_download_rate_kbps * 1024);
@@ -96,19 +102,24 @@ void Session::configure_session() {
                         config_.limits.max_upload_rate_kbps * 1024);
     }
 
-    // Port - use string format: "0.0.0.0:port"
-    std::string listen_interface = "0.0.0.0:" + std::to_string(config_.network.listen_port);
+    // Port - use string format: "0.0.0.0:port" (hardcoded)
+    std::string listen_interface = "0.0.0.0:" + std::to_string(Config::listen_port);
     settings.set_str(lt::settings_pack::listen_interfaces, listen_interface);
 
-    // DHT
-    settings.set_bool(lt::settings_pack::enable_dht, config_.network.enable_dht);
+    // DHT (always enabled)
+    settings.set_bool(lt::settings_pack::enable_dht, Config::enable_dht);
 
-    // LSD
-    settings.set_bool(lt::settings_pack::enable_lsd, config_.network.enable_lsd);
+    // LSD (always enabled)
+    settings.set_bool(lt::settings_pack::enable_lsd, Config::enable_lsd);
 
-    // UPnP/NAT-PMP
-    settings.set_bool(lt::settings_pack::enable_upnp, config_.network.enable_upnp);
-    settings.set_bool(lt::settings_pack::enable_natpmp, config_.network.enable_natpmp);
+    // UPnP/NAT-PMP (always enabled)
+    settings.set_bool(lt::settings_pack::enable_upnp, Config::enable_upnp);
+    settings.set_bool(lt::settings_pack::enable_natpmp, Config::enable_natpmp);
+    
+#ifdef WEBTORRENT_ENABLED
+    // WebTorrent STUN server for NAT traversal
+    settings.set_str(lt::settings_pack::webtorrent_stun_server, config_.webtorrent.stun_server);
+#endif
 
     // Apply to session
     if (session_) {
@@ -154,11 +165,14 @@ void Session::save_session_state() {
     }
 
     try {
-        lt::entry session_state;
-        session_->save_state(session_state);
-
+        // Get session state as session_params
+        lt::session_params params = session_->session_state();
+        
+        // Write session params to disk
+        lt::entry e = lt::write_session_params(params);
+        
         std::vector<char> buf;
-        lt::bencode(std::back_inserter(buf), session_state);
+        lt::bencode(std::back_inserter(buf), e);
 
         std::ofstream file(session_state_file_, std::ios::binary);
         if (!file.is_open()) {
@@ -181,9 +195,9 @@ bool Session::add_torrent(const std::string& torrent_path) {
     }
 
     try {
-        lt::add_torrent_params params;
+        // Load torrent file using libtorrent's load_torrent_file function
+        lt::add_torrent_params params = lt::load_torrent_file(torrent_path);
         params.save_path = data_directory_;
-        params.ti = std::make_shared<lt::torrent_info>(torrent_path);
 
         lt::torrent_handle handle = session_->add_torrent(params);
         
