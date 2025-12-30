@@ -188,6 +188,13 @@ void Session::save_session_state() {
     }
 }
 
+// WebSocket trackers for WebTorrent support
+static const std::vector<std::string> WEBTORRENT_TRACKERS = {
+    "wss://tracker.openwebtorrent.com",
+    "wss://tracker.webtorrent.dev",
+    "wss://tracker.btorrent.xyz"
+};
+
 bool Session::add_torrent(const std::string& torrent_path) {
     if (!session_) {
         LOG_ERROR("Session not initialized");
@@ -205,6 +212,16 @@ bool Session::add_torrent(const std::string& torrent_path) {
             LOG_ERROR("Failed to add torrent: invalid handle");
             return false;
         }
+
+#ifdef WEBTORRENT_ENABLED
+        // Inject WebSocket trackers for WebTorrent support
+        for (const auto& tracker_url : WEBTORRENT_TRACKERS) {
+            lt::announce_entry tracker(tracker_url);
+            tracker.tier = 0;  // tier 0 = highest priority
+            handle.add_tracker(tracker);
+        }
+        LOG_DEBUG("Added {} WebSocket trackers for WebTorrent", WEBTORRENT_TRACKERS.size());
+#endif
 
         std::string info_hash = info_hash_to_string(handle.info_hash());
         torrents_[info_hash] = handle;

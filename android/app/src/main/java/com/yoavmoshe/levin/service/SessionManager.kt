@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.yoavmoshe.levin.data.LevinSettings
 import org.libtorrent4j.AlertListener
+import org.libtorrent4j.AnnounceEntry
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.SessionParams
 import org.libtorrent4j.TorrentHandle
@@ -38,6 +39,13 @@ class LevinSessionManager(
     
     companion object {
         private const val TAG = "LevinSessionManager"
+        
+        // WebSocket trackers for WebTorrent support
+        private val WEBTORRENT_TRACKERS = listOf(
+            "wss://tracker.openwebtorrent.com",
+            "wss://tracker.webtorrent.dev",
+            "wss://tracker.btorrent.xyz"
+        )
     }
     
     /**
@@ -118,6 +126,14 @@ class LevinSessionManager(
             // Find the torrent handle by info hash
             val handle = currentSession.find(ti.infoHash())
             torrents[infoHash] = handle
+            
+            // Inject WebSocket trackers for WebTorrent support
+            for (trackerUrl in WEBTORRENT_TRACKERS) {
+                val tracker = AnnounceEntry(trackerUrl)
+                tracker.tier(0)  // tier 0 = highest priority
+                handle.addTracker(tracker)
+            }
+            Log.d(TAG, "Added ${WEBTORRENT_TRACKERS.size} WebSocket trackers for WebTorrent")
             
             // Track this torrent file for pause/resume (avoid duplicates)
             if (!addedTorrentFiles.any { it.absolutePath == torrentFile.absolutePath }) {

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(levin VERSION 0.4.1 LANGUAGES CXX)
+project(levin VERSION 0.4.2 LANGUAGES CXX)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -85,26 +85,29 @@ else()
         GIT_SUBMODULES_RECURSE ON
     )
     
-    # Workaround: Populate but don't add_subdirectory yet
+    # Fetch libtorrent using FetchContent_MakeAvailable which is simpler
+    # EXCLUDE_FROM_ALL prevents building libtorrent's targets by default
+    # We suppress the install/export errors by not using export features
+    
     FetchContent_GetProperties(libtorrent)
     if(NOT libtorrent_POPULATED)
         FetchContent_Populate(libtorrent)
         
-        # Override install/export to no-ops for libtorrent scope
-        macro(install)
-        endmacro()
-        macro(export)
-        endmacro()
+        # Completely remove install/export commands from libtorrent's CMakeLists.txt
+        # This is necessary because libtorrent's export() calls reference datachannel-static
+        # which causes CMake errors. We only need the library target, not install rules.
+        file(READ "${libtorrent_SOURCE_DIR}/CMakeLists.txt" _lt_cmake_content)
+        
+        # Remove entire install() blocks by replacing them with empty strings
+        # This regex matches install(...) including multi-line calls
+        string(REGEX REPLACE "install[ \t]*\\([^)]*\\)" "" _lt_cmake_content "${_lt_cmake_content}")
+        
+        # Remove export() commands  
+        string(REGEX REPLACE "export[ \t]*\\([^)]*\\)" "" _lt_cmake_content "${_lt_cmake_content}")
+        
+        file(WRITE "${libtorrent_SOURCE_DIR}/CMakeLists.txt" "${_lt_cmake_content}")
         
         add_subdirectory(${libtorrent_SOURCE_DIR} ${libtorrent_BINARY_DIR} EXCLUDE_FROM_ALL)
-        
-        # Restore install/export
-        macro(install)
-            _install(${ARGV})
-        endmacro()
-        macro(export)
-            _export(${ARGV})
-        endmacro()
     endif()
     
     set(LIBTORRENT_TARGETS torrent-rasterbar)
@@ -230,7 +233,7 @@ install(TARGETS levin
 )
 
 install(FILES scripts/levin.service
-    DESTINATION /usr/lib/systemd/user
+    DESTINATION lib/systemd/user
     OPTIONAL
 )
 
