@@ -54,6 +54,10 @@ min_free = "10gb"
 # Default: false (pause seeding when on battery, resume when plugged in)
 # run_on_battery = false
 
+# How often to check disk usage and rebalance storage (in seconds)
+# Default: 60
+# disk_check_interval_seconds = 60
+
 # ---------------------------------------------------------------------------
 # OPTIONAL: Bandwidth Limits (0 = unlimited)
 # ---------------------------------------------------------------------------
@@ -95,7 +99,6 @@ min_free = "10gb"
 #   max_active_torrents = unlimited (-1)
 #
 # Intervals:
-#   disk_check_interval = 60 seconds
 #   seeder_update_interval = 60 minutes
 #   watch_scan_interval = 30 seconds
 #   statistics_save_interval = 5 minutes

@@ -172,6 +172,7 @@ Config Config::load(const std::string& path) {
     config.disk.max_storage = 0;  // unlimited
     config.daemon.log_level = "info";
     config.daemon.run_on_battery = false;
+    config.daemon.disk_check_interval_seconds = 60;  // 60 seconds default
     config.limits.max_download_rate_kbps = 0;  // unlimited
     config.limits.max_upload_rate_kbps = 0;    // unlimited
     config.webtorrent.stun_server = "stun.l.google.com:19302";  // Google's public STUN
@@ -233,6 +234,9 @@ Config Config::load(const std::string& path) {
             }
             if (daemon_section.contains("run_on_battery")) {
                 config.daemon.run_on_battery = toml::find<bool>(daemon_section, "run_on_battery");
+            }
+            if (daemon_section.contains("disk_check_interval_seconds")) {
+                config.daemon.disk_check_interval_seconds = toml::find<int>(daemon_section, "disk_check_interval_seconds");
             }
         }
 

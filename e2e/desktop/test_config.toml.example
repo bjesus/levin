@@ -16,6 +16,8 @@ min_free_percentage = 0.001
 [daemon]
 log_level = "debug"
 run_on_battery = true
+# Fast disk checks for E2E tests (default: 60 seconds)
+disk_check_interval_seconds = 5
 
 [limits]
 max_download_rate_kbps = 0

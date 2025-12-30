@@ -75,7 +75,7 @@ max_upload_rate_kbps = 500
         REQUIRE(Config::max_active_seeds == -1);
         REQUIRE(Config::max_active_torrents == -1);
         REQUIRE(Config::max_total_connections == 200);
-        REQUIRE(Config::disk_check_interval_seconds == 60);
+        REQUIRE(config.daemon.disk_check_interval_seconds == 60);  // Now configurable, not static
         REQUIRE(Config::statistics_save_interval_minutes == 5);
     }
     

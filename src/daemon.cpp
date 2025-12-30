@@ -316,7 +316,7 @@ void Daemon::run() {
         }
 
         // Rebalance disk usage periodically (configurable)
-        auto rebalance_interval = std::chrono::seconds(Config::disk_check_interval_seconds);
+        auto rebalance_interval = std::chrono::seconds(config_.daemon.disk_check_interval_seconds);
         if (now - last_rebalance_ >= rebalance_interval) {
             // Update metrics (but don't rebuild queues)
             piece_manager_->update_metrics();

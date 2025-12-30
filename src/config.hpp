@@ -32,6 +32,7 @@ struct Config {
     struct {
         std::string log_level;          // Default: "info"
         bool run_on_battery;            // Default: false
+        int disk_check_interval_seconds; // Default: 60
     } daemon;
 
     // Bandwidth limits (all optional, 0 = unlimited)
@@ -99,7 +100,6 @@ struct Config {
     static constexpr int max_active_torrents = -1;   // unlimited
     
     // Timing intervals
-    static constexpr int disk_check_interval_seconds = 60;
     static constexpr int seeder_update_interval_minutes = 60;
     static constexpr int watch_scan_interval_seconds = 30;
     static constexpr int statistics_save_interval_minutes = 5;
