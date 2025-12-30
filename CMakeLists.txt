@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(levin VERSION 0.3.4 LANGUAGES CXX)
+project(levin VERSION 0.4.0 LANGUAGES CXX)
 
 # Set C++17 standard
 set(CMAKE_CXX_STANDARD 17)
