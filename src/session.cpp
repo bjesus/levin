@@ -94,8 +94,10 @@ void Session::configure_session() {
 
     // Bandwidth limits (from config)
     if (config_.limits.max_download_rate_kbps > 0) {
-        settings.set_int(lt::settings_pack::download_rate_limit, 
-                        config_.limits.max_download_rate_kbps * 1024);
+        configured_download_limit_ = config_.limits.max_download_rate_kbps * 1024;
+        settings.set_int(lt::settings_pack::download_rate_limit, configured_download_limit_);
+    } else {
+        configured_download_limit_ = 0;  // 0 = unlimited
     }
     if (config_.limits.max_upload_rate_kbps > 0) {
         settings.set_int(lt::settings_pack::upload_rate_limit,
@@ -354,8 +356,9 @@ std::string Session::info_hash_to_string(const lt::sha1_hash& hash) {
 void Session::set_download_rate_limit(int kbps) {
     if (!session_) return;
     
+    configured_download_limit_ = kbps > 0 ? kbps * 1024 : 0;
     lt::settings_pack settings;
-    settings.set_int(lt::settings_pack::download_rate_limit, kbps > 0 ? kbps * 1024 : 0);
+    settings.set_int(lt::settings_pack::download_rate_limit, configured_download_limit_);
     session_->apply_settings(settings);
     
     LOG_INFO("Set download rate limit to {} KB/s", kbps);
@@ -384,6 +387,30 @@ void Session::get_bandwidth_limits(int& download_kbps, int& upload_kbps) {
     
     download_kbps = dl_limit > 0 ? dl_limit / 1024 : 0;
     upload_kbps = ul_limit > 0 ? ul_limit / 1024 : 0;
+}
+
+void Session::pause_downloads() {
+    if (!session_) return;
+    
+    // Set download rate to 1 byte/sec (effectively pauses downloads)
+    // Using 1 instead of 0 because 0 means unlimited in libtorrent
+    lt::settings_pack settings;
+    settings.set_int(lt::settings_pack::download_rate_limit, 1);
+    session_->apply_settings(settings);
+    
+    LOG_INFO("Downloads paused (rate limit set to 1 byte/sec)");
+}
+
+void Session::resume_downloads() {
+    if (!session_) return;
+    
+    // Reset download rate to configured limit (or unlimited)
+    lt::settings_pack settings;
+    settings.set_int(lt::settings_pack::download_rate_limit, configured_download_limit_);
+    session_->apply_settings(settings);
+    
+    LOG_INFO("Downloads resumed (rate limit: {} KB/s)", 
+             configured_download_limit_ > 0 ? configured_download_limit_ / 1024 : 0);
 }
 
 } // namespace levin

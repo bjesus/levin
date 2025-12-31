@@ -101,6 +101,17 @@ public:
      * Get current bandwidth limits (in KB/s).
      */
     void get_bandwidth_limits(int& download_kbps, int& upload_kbps);
+    
+    /**
+     * Pause downloads by setting rate limit to 1 byte/sec.
+     * Uploads continue normally. Used when over storage limit.
+     */
+    void pause_downloads();
+    
+    /**
+     * Resume downloads by restoring configured rate limit.
+     */
+    void resume_downloads();
 
 private:
     const Config& config_;
@@ -109,6 +120,10 @@ private:
     
     std::unique_ptr<lt::session> session_;
     std::unordered_map<std::string, lt::torrent_handle> torrents_;  // info_hash -> handle
+    
+    // Configured download limit in bytes/sec (0 = unlimited)
+    // Used to restore limit after pausing downloads
+    int configured_download_limit_ = 0;
 
     /**
      * Configure session settings.

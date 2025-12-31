@@ -175,6 +175,15 @@ bool Daemon::initialize_components() {
     // Set up callbacks for torrent events
     watcher_->set_torrent_added_callback([this](const std::string& path) {
         LOG_INFO("New torrent detected: {}", path);
+        
+        // Check disk space before adding torrent to prevent downloads when over budget
+        auto status = disk_monitor_->check_space();
+        if (status.over_budget) {
+            LOG_WARN("Over budget when adding torrent - pausing downloads");
+            session_->pause_downloads();
+            state_machine_->update_storage_condition(false);
+        }
+        
         session_->add_torrent(path);
         // Update torrent count in state machine
         update_torrent_count();
@@ -400,8 +409,10 @@ void Daemon::handle_state_transition(LevinState old_state, LevinState new_state)
             break;
             
         case LevinState::SEEDING:
-            // Storage full - pause downloads only
-            LOG_INFO("Pausing downloads (storage limit)");
+            // Storage full - pause downloads by rate limiting to 1 byte/sec
+            // This matches Android behavior and prevents downloading while over budget
+            LOG_INFO("Pausing downloads (storage limit) - limiting to 1 byte/sec");
+            session_->pause_downloads();  // Sets download limit to 1 byte/sec
             piece_manager_->emergency_pause_downloads();
             session_->resume();
             break;
@@ -409,6 +420,7 @@ void Daemon::handle_state_transition(LevinState old_state, LevinState new_state)
         case LevinState::DOWNLOADING:
             // Normal operation - full speed
             session_->resume();
+            session_->resume_downloads();  // Restore configured rate limit
             // Resume downloads if they were paused for storage
             piece_manager_->rebuild_queues();
             break;
