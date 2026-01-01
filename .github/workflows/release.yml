@@ -70,12 +70,13 @@ jobs:
             gcc-c++ \
             boost-devel \
             openssl-devel \
-            rb_libtorrent-devel \
+            glib2-devel \
             libcurl-devel \
             pkgconfig \
             rpm-build \
             rpmdevtools \
             systemd-rpm-macros
+          # Note: libtorrent is bundled from source with WebTorrent support
 
       - name: Checkout code
         uses: actions/checkout@v4

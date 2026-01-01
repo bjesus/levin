@@ -140,6 +140,76 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+  build-rpm:
+    name: Build RPM Package (Fedora ${{ matrix.fedora }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fedora: ['39', '40']
+    container:
+      image: fedora:${{ matrix.fedora }}
+    
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            git \
+            cmake \
+            gcc-c++ \
+            boost-devel \
+            openssl-devel \
+            glib2-devel \
+            libcurl-devel \
+            pkgconfig \
+            rpm-build \
+            rpmdevtools \
+            systemd-rpm-macros
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up RPM build tree
+        run: |
+          rpmdev-setuptree
+          
+          # Use commit SHA for version in CI
+          COMMIT_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          VERSION="0.0.0~git${COMMIT_SHORT}"
+          
+          # Update spec file with current version
+          sed "s/^Version:.*/Version:        $VERSION/" packaging/rpm/levin.spec > ~/rpmbuild/SPECS/levin.spec
+          
+          # Create source tarball
+          tar czf ~/rpmbuild/SOURCES/levin-$VERSION.tar.gz \
+            --transform "s,^,levin-$VERSION/," \
+            --exclude='.git' \
+            --exclude='build' \
+            .
+
+      - name: Build RPM
+        run: |
+          COMMIT_SHORT=$(echo ${{ github.sha }} | cut -c1-7)
+          VERSION="0.0.0~git${COMMIT_SHORT}"
+          
+          cd ~/rpmbuild/SPECS
+          rpmbuild -bb levin.spec
+          mkdir -p $GITHUB_WORKSPACE/dist
+          cp ~/rpmbuild/RPMS/*/*.rpm $GITHUB_WORKSPACE/dist/
+
+      - name: Test package installation
+        run: |
+          dnf install -y dist/*.rpm
+          levin --version
+          levin --help
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package-fedora-${{ matrix.fedora }}
+          path: dist/*.rpm
+          retention-days: 30
+          if-no-files-found: error
+
   code-quality:
     name: Code Quality Checks
     runs-on: ubuntu-latest

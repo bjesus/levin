@@ -12,11 +12,13 @@ BuildRequires:  gcc-c++ >= 9
 BuildRequires:  boost-devel >= 1.70
 BuildRequires:  openssl-devel
 BuildRequires:  libcurl-devel
-BuildRequires:  rb_libtorrent-devel >= 2.0
+BuildRequires:  glib2-devel
 BuildRequires:  pkgconfig
 BuildRequires:  rpm-build
 BuildRequires:  rpmdevtools
 BuildRequires:  systemd-rpm-macros
+BuildRequires:  git
+# Note: libtorrent is bundled from source with WebTorrent support enabled
 
 %description
 Levin is a lightweight BitTorrent daemon designed for archival and content
