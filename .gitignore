@@ -1,0 +1,31 @@
+# Build
+build/
+cmake-build-*/
+_deps/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.cache/
+compile_commands.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android
+platforms/android/.gradle/
+platforms/android/build/
+platforms/android/app/build/
+platforms/android/local.properties
+*.apk
+*.aab
+
+# Generated
+*.o
+*.a
+*.so
+*.dylib
