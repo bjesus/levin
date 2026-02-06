@@ -10,7 +10,7 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
   - `tests/` - Catch2 unit tests + test.torrent fixture
 - `platforms/linux/` - Linux daemon + CLI (single binary)
 - `platforms/android/` - Android app (Kotlin + JNI)
-- `e2e/` - BATS end-to-end tests (28 tests across 4 files)
+- `e2e/` - BATS end-to-end tests (28 Linux tests + 30 Android tests across 8 files)
 - `packaging/` - systemd, deb, rpm, AUR packaging
 
 ## Build System
@@ -21,7 +21,8 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
 - Build (stub mode, fast): `cmake -S . -B build -DLEVIN_USE_STUB_SESSION=ON && cmake --build build -j$(nproc)`
 - Build (real libtorrent): `cmake -S . -B build-real -DLEVIN_USE_STUB_SESSION=OFF && cmake --build build-real -j$(nproc)`
 - Tests: `ctest --output-on-failure --test-dir build`
-- E2E: `LEVIN_BIN=./build/platforms/linux/levin bats e2e/`
+- E2E (Linux): `LEVIN_BIN=./build/platforms/linux/levin bats e2e/`
+- E2E (Android): `bats e2e/android/` (requires connected device + installed APK)
 - Android: `cd platforms/android && ./gradlew assembleDebug`
 
 ## Implementation Phases (TDD)
@@ -47,6 +48,8 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
    - Foreground service with 1s tick
    - Power/Network/Storage monitors
    - Stats + Settings UI
+   - AnnaArchive client (pure Kotlin HttpURLConnection, no libcurl dependency)
+   - BootReceiver for start-on-boot
 
 ## Key Design Decisions
 - `LEVIN_USE_STUB_SESSION` CMake option allows building/testing without libtorrent
@@ -58,7 +61,7 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
 - TorrentWatcher uses inotify on Linux, no-op on other platforms (future: FSEvents, ReadDirectoryChangesW)
 - TorrentWatcher only fires on_add for IN_CLOSE_WRITE and IN_MOVED_TO (not IN_CREATE) to prevent double-adding
 - TorrentWatcher is now integrated into liblevin core (levin_start/levin_tick/levin_stop manage it)
-- AnnaArchive uses libcurl with retry/backoff; Android uses a stub (no curl)
+- AnnaArchive uses libcurl with retry/backoff on Linux; Android uses pure Kotlin HttpURLConnection (no curl dependency)
 - Linux CLI and daemon are a single binary (subcommand routing)
 - IPC uses Unix domain sockets with hand-rolled JSON serialization (no dependency)
 - Config parser handles TOML subset: key=value, strings, numbers, booleans, comments
@@ -73,8 +76,6 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
 - macOS shell (IOKit power, launchd, Homebrew formula)
 - Windows shell (system tray, Windows Service)
 - iOS shell (BGTaskScheduler, constrained background limits)
-- Android: cross-compile libcurl for AnnaArchive support (populate torrents currently stubbed)
-- Android E2E tests via adb + BATS
 
 ## Environment
 - Ubuntu 24.04, g++ 13.3, cmake 3.28

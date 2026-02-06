@@ -148,6 +148,7 @@ class LevinService : Service() {
             return
         }
 
+        LevinNative.setStateCallback(levinHandle)
         LevinNative.setEnabled(levinHandle, true)
 
         // Start monitors
