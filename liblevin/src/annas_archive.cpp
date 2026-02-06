@@ -16,7 +16,7 @@ namespace {
 constexpr int MAX_RETRIES = 3;
 constexpr long TIMEOUT_SECONDS = 30;
 constexpr const char* TORRENT_LIST_URL =
-    "https://annas-archive.org/dyn/generate_torrents?max_tb=1&format=url";
+    "https://annas-archive.li/dyn/generate_torrents?max_tb=1&format=url";
 
 // libcurl write callback: appends data to a std::string
 size_t write_string_cb(char* ptr, size_t size, size_t nmemb, void* userdata) {

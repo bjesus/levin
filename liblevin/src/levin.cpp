@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #endif
 
+
+
 namespace fs = std::filesystem;
 
 // Internal context structure
@@ -231,12 +233,12 @@ int levin_start(levin_t* ctx) {
             // from just the file path. This is a best-effort notification.
         }
     );
+    ctx->started = true;
+
     if (!ctx->watch_directory.empty()) {
         ctx->watcher->start(ctx->watch_directory);
         ctx->watcher->scan_existing();
     }
-
-    ctx->started = true;
     return 0;
 }
 

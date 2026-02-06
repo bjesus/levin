@@ -14,9 +14,9 @@ import android.widget.EditText
 import android.widget.Switch
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import com.yoavmoshe.levin.LevinNative
+import com.yoavmoshe.levin.AnnaArchiveClient
 import com.yoavmoshe.levin.R
-import com.yoavmoshe.levin.service.LevinService
+import java.io.File
 
 class SettingsFragment : Fragment() {
 
@@ -67,20 +67,28 @@ class SettingsFragment : Fragment() {
             populateButton.text = "Populating..."
             Toast.makeText(requireContext(), "Fetching torrents from Anna's Archive...", Toast.LENGTH_SHORT).show()
 
+            val watchDir = File(requireContext().filesDir, "watch")
+
             // Run populate on a background thread
             val thread = HandlerThread("PopulateWorker").also { it.start() }
             val handler = Handler(thread.looper)
             handler.post {
-                // Note: This requires the service to be running (needs a levin handle).
-                // For now, show a message that this feature requires libcurl on Android.
-                val result = -1 // Stub: Android doesn't have libcurl yet
-                requireActivity().runOnUiThread {
+                val result = AnnaArchiveClient.populateTorrents(watchDir,
+                    object : AnnaArchiveClient.ProgressCallback {
+                        override fun onProgress(current: Int, total: Int, message: String) {
+                            activity?.runOnUiThread {
+                                populateButton.text = "[$current/$total] $message"
+                            }
+                        }
+                    })
+
+                activity?.runOnUiThread {
                     populateButton.isEnabled = true
                     populateButton.text = "Populate Torrents from Anna's Archive"
                     if (result >= 0) {
                         Toast.makeText(requireContext(), "Downloaded $result torrents", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(requireContext(), "Populate not available yet (requires libcurl)", Toast.LENGTH_LONG).show()
+                        Toast.makeText(requireContext(), "Failed to fetch torrents. Check network.", Toast.LENGTH_LONG).show()
                     }
                     thread.quitSafely()
                 }
