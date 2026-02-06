@@ -17,15 +17,16 @@ endif()
 set(LIBLEVIN_SOURCES
     src/state_machine.cpp
     src/disk_manager.cpp
+    src/levin.cpp
+    src/stub_torrent_session.cpp
 )
 
-# Phase 4+: add more sources as they are implemented
-# src/levin.cpp
-# src/config.cpp
-# src/statistics.cpp
-# src/torrent_session.cpp
+# Phase 5+: add more sources as they are implemented
+# src/torrent_session.cpp    # real libtorrent session
 # src/torrent_watcher.cpp
 # src/annas_archive.cpp
+# src/config.cpp
+# src/statistics.cpp
 
 add_library(levin STATIC ${LIBLEVIN_SOURCES})
 target_include_directories(levin PUBLIC include)
@@ -49,4 +50,9 @@ if(LEVIN_BUILD_TESTS)
     add_executable(test_disk_deletion tests/test_disk_deletion.cpp)
     target_link_libraries(test_disk_deletion PRIVATE levin Catch2::Catch2WithMain)
     add_test(NAME DiskDeletion COMMAND test_disk_deletion)
+
+    # Phase 4: C API tests
+    add_executable(test_c_api tests/test_c_api.cpp)
+    target_link_libraries(test_c_api PRIVATE levin Catch2::Catch2WithMain)
+    add_test(NAME CAPI COMMAND test_c_api)
 endif()
