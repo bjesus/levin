@@ -142,7 +142,7 @@ TEST_CASE("Torrent list is initially empty", "[capi]") {
     int count = 0;
     auto* list = levin_get_torrents(ctx, &count);
     REQUIRE(count == 0);
-    levin_free_torrents(list);
+    levin_free_torrents(list, count);
     levin_stop(ctx);
     levin_destroy(ctx);
 }

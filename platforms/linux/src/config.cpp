@@ -158,7 +158,7 @@ ShellConfig load_config(const std::string& config_path) {
 
     cfg.lib_config.min_free_bytes          = 1ULL * 1024 * 1024 * 1024; // 1 GB
     cfg.lib_config.min_free_percentage     = 0.05;
-    cfg.lib_config.max_storage_bytes       = 50ULL * 1024 * 1024 * 1024; // 50 GB
+    cfg.lib_config.max_storage_bytes       = 0; // unlimited per design doc
     cfg.lib_config.run_on_battery          = 0;
     cfg.lib_config.run_on_cellular         = 0;
     cfg.lib_config.disk_check_interval_secs = 60;

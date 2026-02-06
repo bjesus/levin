@@ -83,7 +83,7 @@ void levin_remove_torrent(levin_t* ctx, const char* info_hash);
 /* --- Status --- */
 levin_status_t    levin_get_status(levin_t* ctx);
 levin_torrent_t*  levin_get_torrents(levin_t* ctx, int* count);
-void              levin_free_torrents(levin_torrent_t* list);
+void              levin_free_torrents(levin_torrent_t* list, int count);
 
 /* --- Settings (runtime) --- */
 void levin_set_enabled(levin_t* ctx, int enabled);

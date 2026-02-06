@@ -71,7 +71,7 @@ int TorrentWatcher::start(const std::string& directory) {
         return -1;
     }
 
-    uint32_t mask = IN_CREATE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM;
+    uint32_t mask = IN_CREATE | IN_CLOSE_WRITE | IN_MOVED_TO | IN_DELETE | IN_MOVED_FROM;
     impl_->watch_fd = inotify_add_watch(impl_->inotify_fd, directory.c_str(), mask);
     if (impl_->watch_fd < 0) {
         close(impl_->inotify_fd);
@@ -115,7 +115,7 @@ void TorrentWatcher::poll() {
                 if (has_torrent_extension(name)) {
                     std::string full_path = impl_->directory + "/" + name;
 
-                    if ((event->mask & (IN_CREATE | IN_MOVED_TO)) && impl_->on_add) {
+                    if ((event->mask & (IN_CREATE | IN_CLOSE_WRITE | IN_MOVED_TO)) && impl_->on_add) {
                         impl_->on_add(full_path);
                     }
                     if ((event->mask & (IN_DELETE | IN_MOVED_FROM)) && impl_->on_remove) {

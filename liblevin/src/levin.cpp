@@ -2,11 +2,18 @@
 #include "state_machine.h"
 #include "disk_manager.h"
 #include "torrent_session.h"
+#include "torrent_watcher.h"
+#include "annas_archive.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <string>
 #include <filesystem>
+
+#if defined(__linux__) || defined(__APPLE__)
+#include <sys/stat.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -30,6 +37,7 @@ struct levin_ctx {
     levin::StateMachine state_machine;
     levin::DiskManager disk_manager;
     std::unique_ptr<levin::ITorrentSession> session;
+    std::unique_ptr<levin::TorrentWatcher> watcher;
 
     // State tracking
     bool started = false;
@@ -99,7 +107,14 @@ static uint64_t calculate_disk_usage(const std::string& data_dir) {
     if (!fs::exists(data_dir, ec)) return 0;
     for (auto& entry : fs::recursive_directory_iterator(data_dir, ec)) {
         if (entry.is_regular_file()) {
+#if defined(__linux__) || defined(__APPLE__)
+            struct stat st;
+            if (::stat(entry.path().c_str(), &st) == 0) {
+                total += static_cast<uint64_t>(st.st_blocks) * 512;
+            }
+#else
             total += entry.file_size(ec);
+#endif
         }
     }
     return total;
@@ -154,6 +169,9 @@ levin_t* levin_create(const levin_config_t* config) {
     // Create stub session (will be swapped for real session in Phase 5)
     ctx->session = std::make_unique<levin::StubTorrentSession>();
 
+    // Create torrent watcher
+    ctx->watcher = std::make_unique<levin::TorrentWatcher>();
+
     // Wire up state machine callback
     ctx->state_machine.set_callback([ctx](levin::State old_s, levin::State new_s) {
         apply_state_actions(ctx, new_s);
@@ -182,9 +200,32 @@ int levin_start(levin_t* ctx) {
     fs::create_directories(ctx->data_directory, ec);
     fs::create_directories(ctx->state_directory, ec);
 
-    // Start session
+    // Start session (with state restoration)
     ctx->session->configure(6881, ctx->stun_server);
+    ctx->session->load_state(ctx->state_directory + "/session.state");
     ctx->session->start(ctx->data_directory);
+
+    // Configure and start torrent watcher
+    ctx->watcher->set_callbacks(
+        [ctx](const std::string& path) {
+            levin_add_torrent(ctx, path.c_str());
+        },
+        [ctx](const std::string& path) {
+            // Extract filename to use as info_hash key for removal
+            // (the remove_torrent API expects an info_hash, but the watcher
+            // only knows the file path; for now we pass the path and the
+            // session can look it up)
+            auto pos = path.find_last_of('/');
+            std::string name = (pos != std::string::npos) ? path.substr(pos + 1) : path;
+            (void)name;
+            // Note: remove_torrent requires an info_hash which we don't have
+            // from just the file path. This is a best-effort notification.
+        }
+    );
+    if (!ctx->watch_directory.empty()) {
+        ctx->watcher->start(ctx->watch_directory);
+        ctx->watcher->scan_existing();
+    }
 
     ctx->started = true;
     return 0;
@@ -192,6 +233,8 @@ int levin_start(levin_t* ctx) {
 
 void levin_stop(levin_t* ctx) {
     if (!ctx || !ctx->started) return;
+    ctx->watcher->stop();
+    ctx->session->save_state(ctx->state_directory + "/session.state");
     ctx->session->stop();
     ctx->started = false;
 }
@@ -200,6 +243,9 @@ void levin_tick(levin_t* ctx) {
     if (!ctx || !ctx->started) return;
 
     ctx->tick_count++;
+
+    // Poll watcher for new/removed torrent files
+    ctx->watcher->poll();
 
     // Update has_torrents based on session
     ctx->state_machine.update_has_torrents(ctx->session->torrent_count() > 0);
@@ -276,13 +322,40 @@ levin_torrent_t* levin_get_torrents(levin_t* ctx, int* count) {
         if (count) *count = 0;
         return nullptr;
     }
-    // Stub: no torrents to report details on yet
-    *count = 0;
-    return nullptr;
+
+    auto torrents = ctx->session->get_torrent_list();
+    int n = static_cast<int>(torrents.size());
+    if (n == 0) {
+        *count = 0;
+        return nullptr;
+    }
+
+    auto* list = new levin_torrent_t[n];
+    for (int i = 0; i < n; i++) {
+        const auto& t = torrents[i];
+        // Copy info_hash (truncate/pad to 40 chars)
+        std::memset(list[i].info_hash, 0, sizeof(list[i].info_hash));
+        std::strncpy(list[i].info_hash, t.info_hash.c_str(), 40);
+        list[i].name = strdup(t.name.c_str());
+        list[i].size = t.size;
+        list[i].downloaded = t.downloaded;
+        list[i].uploaded = t.uploaded;
+        list[i].download_rate = t.download_rate;
+        list[i].upload_rate = t.upload_rate;
+        list[i].num_peers = t.num_peers;
+        list[i].progress = t.progress;
+        list[i].is_seed = t.is_seed ? 1 : 0;
+    }
+
+    *count = n;
+    return list;
 }
 
-void levin_free_torrents(levin_torrent_t* list) {
+void levin_free_torrents(levin_torrent_t* list, int count) {
     if (list) {
+        for (int i = 0; i < count; i++) {
+            free(const_cast<char*>(list[i].name));
+        }
         delete[] list;
     }
 }
@@ -317,9 +390,17 @@ void levin_set_upload_limit(levin_t* ctx, int kbps) {
     }
 }
 
-int levin_populate_torrents(levin_t* /*ctx*/, levin_progress_cb /*cb*/, void* /*userdata*/) {
-    // TODO: Phase 5d - Anna's Archive integration
-    return -1;
+int levin_populate_torrents(levin_t* ctx, levin_progress_cb cb, void* userdata) {
+    if (!ctx) return -1;
+
+    levin::ProgressCallback progress;
+    if (cb) {
+        progress = [cb, userdata](int current, int total, const std::string& message) {
+            cb(current, total, message.c_str(), userdata);
+        };
+    }
+
+    return levin::AnnaArchive::populate_torrents(ctx->watch_directory, progress);
 }
 
 void levin_set_state_callback(levin_t* ctx, levin_state_cb cb, void* userdata) {

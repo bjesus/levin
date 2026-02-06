@@ -55,10 +55,10 @@ uint64_t DiskManager::delete_to_free(const std::filesystem::path& dir, uint64_t 
 
     if (deficit_bytes == 0) return 0;
 
-    // Collect all regular files
+    // Collect all regular files (recursive for multi-file torrents in subdirectories)
     std::vector<fs::path> files;
     std::error_code ec;
-    for (auto& entry : fs::directory_iterator(dir, ec)) {
+    for (auto& entry : fs::recursive_directory_iterator(dir, ec)) {
         if (entry.is_regular_file()) {
             files.push_back(entry.path());
         }

@@ -1,5 +1,4 @@
 #include "liblevin.h"
-#include "torrent_watcher.h"
 #include "annas_archive.h"
 #include "config.h"
 #include "daemon.h"
@@ -142,7 +141,7 @@ static levin::linux_shell::Message handle_ipc(
             reply[prefix + "progress"] = std::to_string(torrents[i].progress);
             reply[prefix + "seed"]     = std::to_string(torrents[i].is_seed);
         }
-        levin_free_torrents(torrents);
+        levin_free_torrents(torrents, count);
         return reply;
     }
 
@@ -214,17 +213,7 @@ static int run_daemon() {
         return 1;
     }
 
-    // Set up torrent watcher
-    levin::TorrentWatcher watcher;
-    watcher.set_callbacks(
-        [ctx](const std::string& path) { levin_add_torrent(ctx, path.c_str()); },
-        [](const std::string& /*path*/) {
-            // Torrent file removed -- no action needed; the session manages torrents
-        }
-    );
-    if (watcher.start(cfg.watch_dir) == 0) {
-        watcher.scan_existing();
-    }
+    // Torrent watcher is now managed internally by liblevin (levin_start/levin_tick)
 
     // Desktop assumption: always on AC, always has network
     levin_update_battery(ctx, 1);
@@ -250,7 +239,6 @@ static int run_daemon() {
     while (!shutdown_requested()) {
         levin_tick(ctx);
         ipc.poll();
-        watcher.poll();
 
         // Periodic storage check
         ++disk_check_counter;
@@ -277,7 +265,6 @@ static int run_daemon() {
     // -----------------------------------------------------------------------
     // Shutdown
     // -----------------------------------------------------------------------
-    watcher.stop();
     ipc.stop();
     levin_stop(ctx);
     levin_destroy(ctx);

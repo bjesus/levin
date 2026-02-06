@@ -7,6 +7,19 @@
 
 namespace levin {
 
+struct TorrentInfo {
+    std::string info_hash;
+    std::string name;
+    uint64_t size;
+    uint64_t downloaded;
+    uint64_t uploaded;
+    int download_rate;
+    int upload_rate;
+    int num_peers;
+    double progress;
+    bool is_seed;
+};
+
 // Abstract interface for torrent session -- allows stub and real implementations
 class ITorrentSession {
 public:
@@ -21,6 +34,9 @@ public:
     virtual std::optional<std::string> add_torrent(const std::string& torrent_path) = 0;
     virtual void remove_torrent(const std::string& info_hash) = 0;
     virtual int torrent_count() const = 0;
+
+    // Torrent listing
+    virtual std::vector<TorrentInfo> get_torrent_list() const = 0;
 
     // Session control
     virtual void pause_session() = 0;
@@ -61,6 +77,8 @@ public:
     std::optional<std::string> add_torrent(const std::string& torrent_path) override;
     void remove_torrent(const std::string& info_hash) override;
     int torrent_count() const override;
+
+    std::vector<TorrentInfo> get_torrent_list() const override;
 
     void pause_session() override;
     void resume_session() override;

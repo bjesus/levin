@@ -57,6 +57,7 @@ public:
         sp.set_bool(lt::settings_pack::enable_upnp, true);
         sp.set_bool(lt::settings_pack::enable_natpmp, true);
         sp.set_int(lt::settings_pack::connections_limit, 200);
+        sp.set_int(lt::settings_pack::max_connections_per_torrent, 50);
 
         // Alert mask
         sp.set_int(lt::settings_pack::alert_mask,
@@ -71,6 +72,27 @@ public:
         // but true WebRTC data channel support requires master.
         // TODO: Enable when building from master:
         // sp.set_str(lt::settings_pack::webtorrent_stun_server, stun_server_);
+
+        // Try to restore saved session state (DHT nodes, etc.)
+        if (!pending_state_path_.empty() && fs::exists(pending_state_path_)) {
+            try {
+                std::ifstream f(pending_state_path_, std::ios::binary);
+                std::string buf((std::istreambuf_iterator<char>(f)),
+                                 std::istreambuf_iterator<char>());
+                if (!buf.empty()) {
+                    lt::session_params params = lt::read_session_params_buf(
+                        lt::span<char const>(buf.data(), static_cast<int>(buf.size())));
+                    // Merge our settings on top of the restored state
+                    params.settings = sp;
+                    session_ = std::make_unique<lt::session>(std::move(params));
+                    running_ = true;
+                    paused_ = false;
+                    return;
+                }
+            } catch (const std::exception&) {
+                // Fall through to fresh session creation
+            }
+        }
 
         session_ = std::make_unique<lt::session>(sp);
         running_ = true;
@@ -121,6 +143,28 @@ public:
 
     int torrent_count() const override {
         return static_cast<int>(torrents_.size());
+    }
+
+    std::vector<TorrentInfo> get_torrent_list() const override {
+        std::vector<TorrentInfo> result;
+        if (!session_) return result;
+        for (const auto& [hash, handle] : torrents_) {
+            if (!handle.is_valid()) continue;
+            auto st = handle.status(lt::torrent_handle::query_name);
+            TorrentInfo ti;
+            ti.info_hash = hash;
+            ti.name = st.name;
+            ti.size = st.total_wanted;
+            ti.downloaded = st.total_done;
+            ti.uploaded = st.total_upload;
+            ti.download_rate = st.download_rate;
+            ti.upload_rate = st.upload_rate;
+            ti.num_peers = st.num_peers;
+            ti.progress = static_cast<double>(st.progress);
+            ti.is_seed = st.is_seeding;
+            result.push_back(std::move(ti));
+        }
+        return result;
     }
 
     void pause_session() override {
@@ -251,10 +295,9 @@ public:
     }
 
     void load_state(const std::string& path) override {
-        // State is loaded at session creation time via session_params.
-        // For an already-running session, we'd need to recreate it.
-        // This is a no-op for now; state loading happens in start().
-        (void)path;
+        // Store the path so start() can load saved state at session creation time.
+        // For RC_2_0, state must be loaded via session_params at construction.
+        pending_state_path_ = path;
     }
 
 private:
@@ -272,6 +315,7 @@ private:
     bool running_ = false;
     bool paused_ = false;
     int download_rate_limit_ = 0;
+    std::string pending_state_path_;
 };
 
 // Factory function to create the real session

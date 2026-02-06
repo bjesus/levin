@@ -39,6 +39,8 @@ void StubTorrentSession::remove_torrent(const std::string& /*info_hash*/) {
 
 int StubTorrentSession::torrent_count() const { return torrent_count_; }
 
+std::vector<TorrentInfo> StubTorrentSession::get_torrent_list() const { return {}; }
+
 void StubTorrentSession::pause_session() { paused_ = true; }
 void StubTorrentSession::resume_session() { paused_ = false; }
 bool StubTorrentSession::is_paused() const { return paused_; }
