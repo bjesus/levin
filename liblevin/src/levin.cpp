@@ -4,6 +4,7 @@
 #include "torrent_session.h"
 #include "torrent_watcher.h"
 #include "annas_archive.h"
+#include "statistics.h"
 
 #include <cstdlib>
 #include <cstring>
@@ -38,6 +39,9 @@ struct levin_ctx {
     levin::DiskManager disk_manager;
     std::unique_ptr<levin::ITorrentSession> session;
     std::unique_ptr<levin::TorrentWatcher> watcher;
+    levin::Statistics stats;
+    uint64_t stats_base_downloaded = 0; // Cumulative total before this session
+    uint64_t stats_base_uploaded = 0;
 
     // State tracking
     bool started = false;
@@ -200,6 +204,11 @@ int levin_start(levin_t* ctx) {
     fs::create_directories(ctx->data_directory, ec);
     fs::create_directories(ctx->state_directory, ec);
 
+    // Load persistent statistics
+    ctx->stats.load(ctx->state_directory + "/stats.dat");
+    ctx->stats_base_downloaded = ctx->stats.total_downloaded;
+    ctx->stats_base_uploaded = ctx->stats.total_uploaded;
+
     // Start session (with state restoration)
     ctx->session->configure(6881, ctx->stun_server);
     ctx->session->load_state(ctx->state_directory + "/session.state");
@@ -234,6 +243,12 @@ int levin_start(levin_t* ctx) {
 void levin_stop(levin_t* ctx) {
     if (!ctx || !ctx->started) return;
     ctx->watcher->stop();
+
+    // Update and save statistics before stopping
+    ctx->stats.update(ctx->stats_base_downloaded, ctx->stats_base_uploaded,
+                      ctx->session->total_downloaded(), ctx->session->total_uploaded());
+    ctx->stats.save(ctx->state_directory + "/stats.dat");
+
     ctx->session->save_state(ctx->state_directory + "/session.state");
     ctx->session->stop();
     ctx->started = false;
@@ -255,6 +270,14 @@ void levin_tick(levin_t* ctx) {
         if (ctx->fs_total > 0) {
             do_disk_check(ctx);
         }
+    }
+
+    // Periodic stats save (every 5 minutes)
+    static const int STATS_SAVE_INTERVAL = 300;
+    if (ctx->tick_count % STATS_SAVE_INTERVAL == 0) {
+        ctx->stats.update(ctx->stats_base_downloaded, ctx->stats_base_uploaded,
+                          ctx->session->total_downloaded(), ctx->session->total_uploaded());
+        ctx->stats.save(ctx->state_directory + "/stats.dat");
     }
 }
 
@@ -308,8 +331,11 @@ levin_status_t levin_get_status(levin_t* ctx) {
     status.peer_count = ctx->session ? ctx->session->peer_count() : 0;
     status.download_rate = ctx->session ? ctx->session->download_rate() : 0;
     status.upload_rate = ctx->session ? ctx->session->upload_rate() : 0;
-    status.total_downloaded = ctx->session ? ctx->session->total_downloaded() : 0;
-    status.total_uploaded = ctx->session ? ctx->session->total_uploaded() : 0;
+    // Cumulative totals: base (from previous sessions) + current session
+    status.total_downloaded = ctx->stats_base_downloaded +
+        (ctx->session ? ctx->session->total_downloaded() : 0);
+    status.total_uploaded = ctx->stats_base_uploaded +
+        (ctx->session ? ctx->session->total_uploaded() : 0);
     status.disk_usage = ctx->disk_usage;
     status.disk_budget = ctx->disk_budget;
     status.over_budget = ctx->over_budget;
@@ -388,6 +414,22 @@ void levin_set_upload_limit(levin_t* ctx, int kbps) {
             ctx->session->set_upload_rate_limit(0);
         }
     }
+}
+
+void levin_set_run_on_battery(levin_t* ctx, int run_on_battery) {
+    if (!ctx) return;
+    ctx->run_on_battery = run_on_battery;
+    // Re-evaluate battery condition with current power state
+    bool battery_ok = ctx->on_ac_power || ctx->run_on_battery;
+    ctx->state_machine.update_battery(battery_ok);
+}
+
+void levin_set_run_on_cellular(levin_t* ctx, int run_on_cellular) {
+    if (!ctx) return;
+    ctx->run_on_cellular = run_on_cellular;
+    // Re-evaluate network condition with current state
+    bool network_ok = ctx->has_wifi || (ctx->has_cellular && ctx->run_on_cellular);
+    ctx->state_machine.update_network(network_ok);
 }
 
 int levin_populate_torrents(levin_t* ctx, levin_progress_cb cb, void* userdata) {

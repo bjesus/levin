@@ -65,6 +65,15 @@
             android:layout_height="wrap_content"
             android:text="Run on Cellular Data"
             android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Run on Startup -->
+        <Switch
+            android:id="@+id/switch_startup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Run on Startup"
+            android:textSize="16sp"
             android:layout_marginBottom="24dp" />
 
         <!-- Save Button -->
@@ -72,7 +81,15 @@
             android:id="@+id/button_save"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Save Settings" />
+            android:text="Save Settings"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Populate Torrents Button -->
+        <Button
+            android:id="@+id/button_populate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Populate Torrents from Anna's Archive" />
 
     </LinearLayout>
 

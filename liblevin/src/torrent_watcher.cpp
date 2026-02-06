@@ -115,7 +115,7 @@ void TorrentWatcher::poll() {
                 if (has_torrent_extension(name)) {
                     std::string full_path = impl_->directory + "/" + name;
 
-                    if ((event->mask & (IN_CREATE | IN_CLOSE_WRITE | IN_MOVED_TO)) && impl_->on_add) {
+                    if ((event->mask & (IN_CLOSE_WRITE | IN_MOVED_TO)) && impl_->on_add) {
                         impl_->on_add(full_path);
                     }
                     if ((event->mask & (IN_DELETE | IN_MOVED_FROM)) && impl_->on_remove) {

@@ -139,6 +139,75 @@ Java_com_yoavmoshe_levin_LevinNative_updateStorage(
     }
 }
 
+// --- Torrent Management ---
+
+JNIEXPORT jint JNICALL
+Java_com_yoavmoshe_levin_LevinNative_addTorrent(
+        JNIEnv* env, jobject /* this */, jlong handle, jstring torrentPath) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (!ctx) return -1;
+    std::string path = jstring_to_string(env, torrentPath);
+    return levin_add_torrent(ctx, path.c_str());
+}
+
+JNIEXPORT void JNICALL
+Java_com_yoavmoshe_levin_LevinNative_removeTorrent(
+        JNIEnv* env, jobject /* this */, jlong handle, jstring infoHash) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (!ctx) return;
+    std::string hash = jstring_to_string(env, infoHash);
+    levin_remove_torrent(ctx, hash.c_str());
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_com_yoavmoshe_levin_LevinNative_getTorrents(
+        JNIEnv* env, jobject /* this */, jlong handle) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+
+    jclass cls = env->FindClass("com/yoavmoshe/levin/LevinNative$TorrentData");
+    if (!cls) {
+        LOGE("getTorrents: TorrentData class not found");
+        return nullptr;
+    }
+
+    jmethodID ctor = env->GetMethodID(cls, "<init>",
+        "(Ljava/lang/String;Ljava/lang/String;JJJIIIDZ)V");
+    if (!ctor) {
+        LOGE("getTorrents: TorrentData constructor not found");
+        return nullptr;
+    }
+
+    if (!ctx) {
+        return env->NewObjectArray(0, cls, nullptr);
+    }
+
+    int count = 0;
+    levin_torrent_t* torrents = levin_get_torrents(ctx, &count);
+
+    jobjectArray arr = env->NewObjectArray(count, cls, nullptr);
+    for (int i = 0; i < count; i++) {
+        jstring hash = env->NewStringUTF(torrents[i].info_hash);
+        jstring name = env->NewStringUTF(torrents[i].name ? torrents[i].name : "");
+        jobject obj = env->NewObject(cls, ctor,
+            hash, name,
+            (jlong)torrents[i].size,
+            (jlong)torrents[i].downloaded,
+            (jlong)torrents[i].uploaded,
+            (jint)torrents[i].download_rate,
+            (jint)torrents[i].upload_rate,
+            (jint)torrents[i].num_peers,
+            (jdouble)torrents[i].progress,
+            (jboolean)(torrents[i].is_seed != 0));
+        env->SetObjectArrayElement(arr, i, obj);
+        env->DeleteLocalRef(hash);
+        env->DeleteLocalRef(name);
+        env->DeleteLocalRef(obj);
+    }
+
+    levin_free_torrents(torrents, count);
+    return arr;
+}
+
 // --- Status ---
 
 JNIEXPORT jobject JNICALL
@@ -153,7 +222,7 @@ Java_com_yoavmoshe_levin_LevinNative_getStatus(
         return nullptr;
     }
 
-    jmethodID ctor = env->GetMethodID(cls, "<init>", "(IIIIIIJJJZ)V");
+    jmethodID ctor = env->GetMethodID(cls, "<init>", "(IIIIIIJJJJZ)V");
     if (!ctor) {
         LOGE("getStatus: StatusData constructor not found");
         return nullptr;
@@ -163,7 +232,7 @@ Java_com_yoavmoshe_levin_LevinNative_getStatus(
         // Return zeroed status
         return env->NewObject(cls, ctor,
                               0, 0, 0, 0, 0, 0,
-                              (jlong)0, (jlong)0, (jlong)0,
+                              (jlong)0, (jlong)0, (jlong)0, (jlong)0,
                               (jboolean)false);
     }
 
@@ -179,6 +248,7 @@ Java_com_yoavmoshe_levin_LevinNative_getStatus(
                           (jlong)status.total_downloaded,
                           (jlong)status.total_uploaded,
                           (jlong)status.disk_usage,
+                          (jlong)status.disk_budget,
                           (jboolean)(status.over_budget != 0));
 }
 
@@ -199,6 +269,35 @@ Java_com_yoavmoshe_levin_LevinNative_setUploadLimit(
     auto* ctx = reinterpret_cast<levin_t*>(handle);
     if (ctx) {
         levin_set_upload_limit(ctx, kbps);
+    }
+}
+
+// --- Anna's Archive ---
+
+JNIEXPORT jint JNICALL
+Java_com_yoavmoshe_levin_LevinNative_populateTorrents(
+        JNIEnv* /* env */, jobject /* this */, jlong handle) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (!ctx) return -1;
+    // Note: Android currently uses a stub AnnaArchive (no libcurl).
+    // This will return -1 until libcurl is cross-compiled for Android.
+    return levin_populate_torrents(ctx, nullptr, nullptr);
+}
+
+// --- Callbacks ---
+
+// Global state callback: posts state change to a Java callback if registered.
+// For simplicity, state callback logging is done natively (no Java upcall for now).
+static void jni_state_callback(levin_state_t old_state, levin_state_t new_state, void* /* userdata */) {
+    LOGI("State changed: %d -> %d", old_state, new_state);
+}
+
+JNIEXPORT void JNICALL
+Java_com_yoavmoshe_levin_LevinNative_setStateCallback(
+        JNIEnv* /* env */, jobject /* this */, jlong handle) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (ctx) {
+        levin_set_state_callback(ctx, jni_state_callback, nullptr);
     }
 }
 

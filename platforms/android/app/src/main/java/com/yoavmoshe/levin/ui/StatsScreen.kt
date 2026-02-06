@@ -26,6 +26,7 @@ class StatsFragment : Fragment() {
     private lateinit var totalDownText: TextView
     private lateinit var totalUpText: TextView
     private lateinit var diskUsageText: TextView
+    private lateinit var diskBudgetText: TextView
     private lateinit var enableSwitch: Switch
     private lateinit var serviceStatusText: TextView
 
@@ -55,6 +56,7 @@ class StatsFragment : Fragment() {
         totalDownText = view.findViewById(R.id.text_total_downloaded)
         totalUpText = view.findViewById(R.id.text_total_uploaded)
         diskUsageText = view.findViewById(R.id.text_disk_usage)
+        diskBudgetText = view.findViewById(R.id.text_disk_budget)
         enableSwitch = view.findViewById(R.id.switch_enable)
         serviceStatusText = view.findViewById(R.id.text_service_status)
 
@@ -95,6 +97,7 @@ class StatsFragment : Fragment() {
             totalUpText.text = "Total Up: ${formatBytes(status.totalUploaded)}"
             diskUsageText.text = "Disk Usage: ${formatBytes(status.diskUsage)}" +
                     if (status.overBudget) " (OVER BUDGET)" else ""
+            diskBudgetText.text = "Disk Budget: ${formatBytes(status.diskBudget)}"
         } else {
             stateText.text = "State: --"
             torrentsText.text = "Torrents: --"
@@ -104,6 +107,7 @@ class StatsFragment : Fragment() {
             totalDownText.text = "Total Down: --"
             totalUpText.text = "Total Up: --"
             diskUsageText.text = "Disk Usage: --"
+            diskBudgetText.text = "Disk Budget: --"
         }
     }
 

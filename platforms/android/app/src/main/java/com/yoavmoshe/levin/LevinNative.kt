@@ -23,6 +23,7 @@ object LevinNative {
         val totalDownloaded: Long,
         val totalUploaded: Long,
         val diskUsage: Long,
+        val diskBudget: Long,
         val overBudget: Boolean
     ) {
         val stateName: String
@@ -35,6 +36,22 @@ object LevinNative {
                 else -> "UNKNOWN"
             }
     }
+
+    /**
+     * Torrent info returned by [getTorrents].
+     */
+    data class TorrentData(
+        val infoHash: String,
+        val name: String,
+        val size: Long,
+        val downloaded: Long,
+        val uploaded: Long,
+        val downloadRate: Int,
+        val uploadRate: Int,
+        val numPeers: Int,
+        val progress: Double,
+        val isSeed: Boolean
+    )
 
     // --- Lifecycle ---
     external fun create(
@@ -62,10 +79,21 @@ object LevinNative {
     external fun updateNetwork(handle: Long, hasWifi: Boolean, hasCellular: Boolean)
     external fun updateStorage(handle: Long, fsTotal: Long, fsFree: Long)
 
+    // --- Torrent Management ---
+    external fun addTorrent(handle: Long, torrentPath: String): Int
+    external fun removeTorrent(handle: Long, infoHash: String)
+    external fun getTorrents(handle: Long): Array<TorrentData>
+
     // --- Status ---
     external fun getStatus(handle: Long): StatusData
 
     // --- Settings ---
     external fun setDownloadLimit(handle: Long, kbps: Int)
     external fun setUploadLimit(handle: Long, kbps: Int)
+
+    // --- Anna's Archive ---
+    external fun populateTorrents(handle: Long): Int
+
+    // --- Callbacks ---
+    external fun setStateCallback(handle: Long)
 }

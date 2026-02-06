@@ -21,6 +21,7 @@ set(LIBLEVIN_SOURCES
     ${LEVIN_ROOT}/liblevin/src/disk_manager.cpp
     ${LEVIN_ROOT}/liblevin/src/levin.cpp
     ${LEVIN_ROOT}/liblevin/src/torrent_watcher.cpp
+    ${LEVIN_ROOT}/liblevin/src/statistics.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/annas_archive_stub.cpp
 )
 

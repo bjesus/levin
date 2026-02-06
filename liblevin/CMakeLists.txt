@@ -41,6 +41,7 @@ set(LIBLEVIN_SOURCES
     src/levin.cpp
     src/torrent_watcher.cpp
     src/annas_archive.cpp
+    src/statistics.cpp
 )
 
 if(LEVIN_USE_STUB_SESSION)
@@ -94,4 +95,9 @@ if(LEVIN_BUILD_TESTS)
     add_executable(test_torrent_session tests/test_torrent_session.cpp)
     target_link_libraries(test_torrent_session PRIVATE levin Catch2::Catch2WithMain)
     add_test(NAME TorrentSession COMMAND test_torrent_session)
+
+    # Statistics tests
+    add_executable(test_statistics tests/test_statistics.cpp)
+    target_link_libraries(test_statistics PRIVATE levin Catch2::Catch2WithMain)
+    add_test(NAME Statistics COMMAND test_statistics)
 endif()

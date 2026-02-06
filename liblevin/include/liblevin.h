@@ -89,6 +89,8 @@ void              levin_free_torrents(levin_torrent_t* list, int count);
 void levin_set_enabled(levin_t* ctx, int enabled);
 void levin_set_download_limit(levin_t* ctx, int kbps);
 void levin_set_upload_limit(levin_t* ctx, int kbps);
+void levin_set_run_on_battery(levin_t* ctx, int run_on_battery);
+void levin_set_run_on_cellular(levin_t* ctx, int run_on_cellular);
 
 /* --- Anna's Archive --- */
 int levin_populate_torrents(levin_t* ctx, levin_progress_cb cb, void* userdata);

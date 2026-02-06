@@ -257,6 +257,8 @@ static int run_daemon() {
             cfg = load_config();
             levin_set_download_limit(ctx, cfg.lib_config.max_download_kbps);
             levin_set_upload_limit(ctx, cfg.lib_config.max_upload_kbps);
+            levin_set_run_on_battery(ctx, cfg.lib_config.run_on_battery);
+            levin_set_run_on_cellular(ctx, cfg.lib_config.run_on_cellular);
         }
 
         ::sleep(1);
