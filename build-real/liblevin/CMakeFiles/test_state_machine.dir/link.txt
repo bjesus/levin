@@ -1,1 +1,0 @@
-/usr/bin/c++ CMakeFiles/test_state_machine.dir/tests/test_state_machine.cpp.o -o test_state_machine  liblevin.a ../_deps/catch2-build/src/libCatch2Main.a ../_deps/libtorrent-build/libtorrent-rasterbar.a /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so ../_deps/catch2-build/src/libCatch2.a 
