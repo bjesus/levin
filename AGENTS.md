@@ -5,12 +5,12 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
 
 ## Architecture
 - `liblevin/` - Core C++ library with C API
-  - `include/` - Public headers (state_machine.h, disk_manager.h, liblevin.h, torrent_session.h, torrent_watcher.h, annas_archive.h)
+  - `include/` - Public headers (state_machine.h, disk_manager.h, liblevin.h, torrent_session.h, torrent_watcher.h, annas_archive.h, statistics.h)
   - `src/` - Implementation files
   - `tests/` - Catch2 unit tests + test.torrent fixture
 - `platforms/linux/` - Linux daemon + CLI (single binary)
 - `platforms/android/` - Android app (Kotlin + JNI)
-- `e2e/` - BATS end-to-end tests (24 tests)
+- `e2e/` - BATS end-to-end tests (28 tests across 4 files)
 - `packaging/` - systemd, deb, rpm, AUR packaging
 
 ## Build System
@@ -56,17 +56,24 @@ Levin is a background torrent seeding client for Anna's Archive. It uses a share
 - File deletion uses random order per design doc
 - ITorrentSession interface enables stub/real session swapping
 - TorrentWatcher uses inotify on Linux, no-op on other platforms (future: FSEvents, ReadDirectoryChangesW)
+- TorrentWatcher only fires on_add for IN_CLOSE_WRITE and IN_MOVED_TO (not IN_CREATE) to prevent double-adding
+- TorrentWatcher is now integrated into liblevin core (levin_start/levin_tick/levin_stop manage it)
 - AnnaArchive uses libcurl with retry/backoff; Android uses a stub (no curl)
 - Linux CLI and daemon are a single binary (subcommand routing)
 - IPC uses Unix domain sockets with hand-rolled JSON serialization (no dependency)
 - Config parser handles TOML subset: key=value, strings, numbers, booleans, comments
+- SIGHUP reloads config: bandwidth limits, run_on_battery, run_on_cellular
+- Statistics module persists cumulative download/upload totals across sessions (binary format, saved every 5 min)
+- Session state (libtorrent) persisted on stop, restored on start
+- Disk usage uses stat() st_blocks*512 for accurate block-based measurement on Linux/macOS
 
 ## Future Work
 - Build libtorrent from master branch for true WebTorrent/WebRTC support
+- Add `bandwidth` CLI command per design doc
 - macOS shell (IOKit power, launchd, Homebrew formula)
 - Windows shell (system tray, Windows Service)
 - iOS shell (BGTaskScheduler, constrained background limits)
-- Android: cross-compile libcurl for AnnaArchive support
+- Android: cross-compile libcurl for AnnaArchive support (populate torrents currently stubbed)
 - Android E2E tests via adb + BATS
 
 ## Environment
