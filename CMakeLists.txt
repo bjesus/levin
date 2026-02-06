@@ -17,5 +17,5 @@ endif()
 add_subdirectory(liblevin)
 
 if(LEVIN_BUILD_DAEMON AND NOT ANDROID)
-    # add_subdirectory(platforms/linux)  # TODO: Phase 6
+    add_subdirectory(platforms/linux)
 endif()
