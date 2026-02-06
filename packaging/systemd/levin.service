@@ -1,0 +1,46 @@
+# Levin - Background torrent seeding client for Anna's Archive
+#
+# Install as a systemd user service:
+#   mkdir -p ~/.config/systemd/user
+#   cp levin.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now levin
+#
+# NOTE: The current daemon uses a double-fork daemonization model, so this
+# service uses Type=forking with a PID file. A future improvement would be
+# adding a --foreground / --no-daemon flag to the binary and switching to
+# Type=simple, which is the preferred approach for systemd services (systemd
+# handles daemonization, process tracking, and cgroup management itself).
+
+[Unit]
+Description=Levin - Anna's Archive torrent seeder
+Documentation=https://annas-archive.org
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+PIDFile=%t/levin/levin.pid
+ExecStart=%h/.local/bin/levin start
+ExecStop=%h/.local/bin/levin stop
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=30
+
+# Resource limits
+LimitNOFILE=65536
+MemoryHigh=512M
+MemoryMax=1G
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.cache/levin %h/.config/levin %h/.local/state/levin %t/levin
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectControlGroups=yes
+RestrictRealtime=yes
+
+[Install]
+WantedBy=default.target

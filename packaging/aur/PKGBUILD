@@ -1,0 +1,34 @@
+# Maintainer: Levin Contributors <levin@annas-archive.org>
+pkgname=levin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Background torrent seeding client for Anna's Archive"
+arch=('x86_64')
+url="https://annas-archive.org"
+license=('MIT')
+depends=('curl' 'openssl')
+makedepends=('cmake' 'gcc')
+source=("${pkgname}-${pkgver}.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+    cd "${pkgname}-${pkgver}"
+    cmake -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DLEVIN_BUILD_TESTS=OFF \
+        -DLEVIN_USE_STUB_SESSION=OFF
+    cmake --build build
+}
+
+package() {
+    cd "${pkgname}-${pkgver}"
+
+    # Binary
+    install -Dm755 build/platforms/linux/levin \
+        "${pkgdir}/usr/bin/levin"
+
+    # Systemd user service
+    install -Dm644 packaging/systemd/levin.service \
+        "${pkgdir}/usr/lib/systemd/user/levin.service"
+}
