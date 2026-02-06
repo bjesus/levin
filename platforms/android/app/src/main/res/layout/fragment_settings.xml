@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Min Free Space -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Minimum Free Space (GB)"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/edit_min_free"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="2.0"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Max Storage -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Maximum Storage (GB, 0 = unlimited)"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/edit_max_storage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:hint="0.0"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Run on Battery -->
+        <Switch
+            android:id="@+id/switch_battery"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Run on Battery"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Run on Cellular -->
+        <Switch
+            android:id="@+id/switch_cellular"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Run on Cellular Data"
+            android:textSize="16sp"
+            android:layout_marginBottom="24dp" />
+
+        <!-- Save Button -->
+        <Button
+            android:id="@+id/button_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Save Settings" />
+
+    </LinearLayout>
+
+</ScrollView>
