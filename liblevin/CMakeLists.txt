@@ -31,11 +31,16 @@ if(NOT LEVIN_USE_STUB_SESSION)
     FetchContent_MakeAvailable(libtorrent)
 endif()
 
+# --- libcurl (for Anna's Archive client) ---
+find_package(CURL REQUIRED)
+
 # --- liblevin sources ---
 set(LIBLEVIN_SOURCES
     src/state_machine.cpp
     src/disk_manager.cpp
     src/levin.cpp
+    src/torrent_watcher.cpp
+    src/annas_archive.cpp
 )
 
 if(LEVIN_USE_STUB_SESSION)
@@ -52,6 +57,8 @@ endif()
 add_library(levin STATIC ${LIBLEVIN_SOURCES})
 target_include_directories(levin PUBLIC include)
 target_compile_features(levin PUBLIC cxx_std_17)
+
+target_link_libraries(levin PUBLIC CURL::libcurl)
 
 if(LEVIN_USE_STUB_SESSION)
     target_compile_definitions(levin PUBLIC LEVIN_USE_STUB_SESSION)
