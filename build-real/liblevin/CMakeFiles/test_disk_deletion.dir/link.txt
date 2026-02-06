@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/test_disk_deletion.dir/tests/test_disk_deletion.cpp.o -o test_disk_deletion  liblevin.a ../_deps/catch2-build/src/libCatch2Main.a ../_deps/libtorrent-build/libtorrent-rasterbar.a /usr/lib/x86_64-linux-gnu/libssl.so /usr/lib/x86_64-linux-gnu/libcrypto.so ../_deps/catch2-build/src/libCatch2.a 

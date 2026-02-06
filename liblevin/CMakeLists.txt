@@ -13,24 +13,51 @@ if(LEVIN_BUILD_TESTS)
     FetchContent_MakeAvailable(Catch2)
 endif()
 
+# --- libtorrent (when not using stub) ---
+if(NOT LEVIN_USE_STUB_SESSION)
+    find_package(Boost REQUIRED COMPONENTS system)
+    find_package(OpenSSL REQUIRED)
+
+    FetchContent_Declare(
+        libtorrent
+        GIT_REPOSITORY https://github.com/arvidn/libtorrent.git
+        GIT_TAG        RC_2_0
+        GIT_SHALLOW    TRUE
+    )
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+    set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(webtorrent ON CACHE BOOL "Enable WebTorrent support" FORCE)
+    set(deprecated-functions OFF CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(libtorrent)
+endif()
+
 # --- liblevin sources ---
 set(LIBLEVIN_SOURCES
     src/state_machine.cpp
     src/disk_manager.cpp
     src/levin.cpp
-    src/stub_torrent_session.cpp
 )
 
-# Phase 5+: add more sources as they are implemented
-# src/torrent_session.cpp    # real libtorrent session
-# src/torrent_watcher.cpp
-# src/annas_archive.cpp
-# src/config.cpp
-# src/statistics.cpp
+if(LEVIN_USE_STUB_SESSION)
+    list(APPEND LIBLEVIN_SOURCES src/stub_torrent_session.cpp)
+    message(STATUS "Levin: using stub torrent session (no libtorrent)")
+else()
+    list(APPEND LIBLEVIN_SOURCES
+        src/stub_torrent_session.cpp   # still needed for potential runtime switching
+        src/torrent_session.cpp
+    )
+    message(STATUS "Levin: using real libtorrent session with WebTorrent")
+endif()
 
 add_library(levin STATIC ${LIBLEVIN_SOURCES})
 target_include_directories(levin PUBLIC include)
 target_compile_features(levin PUBLIC cxx_std_17)
+
+if(LEVIN_USE_STUB_SESSION)
+    target_compile_definitions(levin PUBLIC LEVIN_USE_STUB_SESSION)
+else()
+    target_link_libraries(levin PUBLIC torrent-rasterbar)
+endif()
 
 # --- Tests ---
 if(LEVIN_BUILD_TESTS)
@@ -55,4 +82,9 @@ if(LEVIN_BUILD_TESTS)
     add_executable(test_c_api tests/test_c_api.cpp)
     target_link_libraries(test_c_api PRIVATE levin Catch2::Catch2WithMain)
     add_test(NAME CAPI COMMAND test_c_api)
+
+    # Phase 5: Torrent session tests
+    add_executable(test_torrent_session tests/test_torrent_session.cpp)
+    target_link_libraries(test_torrent_session PRIVATE levin Catch2::Catch2WithMain)
+    add_test(NAME TorrentSession COMMAND test_torrent_session)
 endif()
