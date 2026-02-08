@@ -47,7 +47,7 @@ teardown() {
 start_daemon() {
     "$LEVIN_BIN" start
     # The daemon double-forks, so 'start' returns immediately.
-    # Wait for the PID file to appear as a readiness signal.
+    # Wait for the PID file to appear first.
     local pidfile="${XDG_RUNTIME_DIR}/levin/levin.pid"
     local count=0
     while [ "$count" -lt 10 ]; do
@@ -55,13 +55,28 @@ start_daemon() {
             local pid
             pid="$(cat "$pidfile" 2>/dev/null)" || true
             if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-                return 0
+                break
             fi
         fi
         sleep 0.5
         count=$((count + 1))
     done
-    echo "Timed out waiting for daemon to start"
+    if [ "$count" -ge 10 ]; then
+        echo "Timed out waiting for PID file"
+        return 1
+    fi
+    # Now wait for the IPC socket to become responsive.
+    # With real libtorrent + WebRTC, session init takes longer than stub mode,
+    # so the IPC socket may not be ready immediately after PID file appears.
+    count=0
+    while [ "$count" -lt 20 ]; do
+        if "$LEVIN_BIN" status >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 0.5
+        count=$((count + 1))
+    done
+    echo "Timed out waiting for IPC socket to become responsive"
     return 1
 }
 

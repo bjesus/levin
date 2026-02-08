@@ -7,6 +7,7 @@
 #include <libtorrent/add_torrent_params.hpp>
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_info.hpp>
+#include <libtorrent/load_torrent.hpp>
 #include <libtorrent/alert_types.hpp>
 #include <libtorrent/write_resume_data.hpp>
 #include <libtorrent/read_resume_data.hpp>
@@ -64,13 +65,10 @@ public:
                    | lt::alert_category::status
                    | lt::alert_category::storage);
 
-        // Note: WebTorrent/WebRTC settings (webtorrent_stun_server) are only
-        // available on libtorrent master branch with -Dwebtorrent=ON.
-        // When building with RC_2_0, we still inject WSS trackers on every
-        // torrent so that WebTorrent-capable peers can find us via the tracker,
-        // but true WebRTC data channel support requires master.
-        // TODO: Enable when building from master:
-        // sp.set_str(lt::settings_pack::webtorrent_stun_server, stun_server_);
+        // WebTorrent/WebRTC via libdatachannel (requires master branch + webtorrent=ON)
+#ifdef TORRENT_USE_RTC
+        sp.set_str(lt::settings_pack::webtorrent_stun_server, stun_server_);
+#endif
 
         // Try to restore saved session state (DHT nodes, etc.)
         if (!pending_state_path_.empty() && fs::exists(pending_state_path_)) {
@@ -112,9 +110,7 @@ public:
         if (!running_ || !session_) return std::nullopt;
 
         try {
-            lt::add_torrent_params atp;
-            auto ti = std::make_shared<lt::torrent_info>(torrent_path);
-            atp.ti = ti;
+            lt::add_torrent_params atp = lt::load_torrent_file(torrent_path);
             atp.save_path = data_dir_;
 
             // Inject WebSocket trackers at tier 0
@@ -265,10 +261,11 @@ public:
     }
 
     bool is_webtorrent_enabled() const override {
-        // On RC_2_0, WebTorrent is not natively supported.
-        // We still inject WSS trackers, but true WebRTC requires master branch.
-        // Return true if we have WSS trackers configured (our injection logic).
-        return true;  // We always inject WSS trackers
+#ifdef TORRENT_USE_RTC
+        return true;   // WebRTC data channels via libdatachannel
+#else
+        return false;  // No WebRTC support in this build
+#endif
     }
 
     std::vector<std::string> get_trackers(const std::string& info_hash) const override {

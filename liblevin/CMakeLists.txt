@@ -21,12 +21,12 @@ if(NOT LEVIN_USE_STUB_SESSION)
     FetchContent_Declare(
         libtorrent
         GIT_REPOSITORY https://github.com/arvidn/libtorrent.git
-        GIT_TAG        RC_2_0
-        GIT_SHALLOW    TRUE
+        GIT_TAG        master
+        GIT_SUBMODULES_RECURSE TRUE
     )
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
-    set(webtorrent ON CACHE BOOL "Enable WebTorrent support" FORCE)
+    set(webtorrent ON CACHE BOOL "Enable WebTorrent/WebRTC via libdatachannel" FORCE)
     set(deprecated-functions OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(libtorrent)
 endif()

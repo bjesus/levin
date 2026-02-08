@@ -15,13 +15,16 @@ android {
         versionName = "0.1.0"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            // armeabi-v7a dropped: OpenSSL ARM assembly has PIC relocation
+            // issues when linked into shared libs, and 32-bit ARM devices
+            // are a negligible fraction of active Android installs.
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
 
         externalNativeBuild {
             cmake {
                 arguments(
-                    "-DLEVIN_USE_STUB_SESSION=ON",
+                    "-DLEVIN_USE_STUB_SESSION=OFF",
                     "-DLEVIN_BUILD_TESTS=OFF",
                     "-DANDROID_STL=c++_shared"
                 )
