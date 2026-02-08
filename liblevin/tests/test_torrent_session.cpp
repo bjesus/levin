@@ -10,10 +10,6 @@
 
 namespace fs = std::filesystem;
 
-// Forward declaration of factory (defined in torrent_session.cpp)
-namespace levin {
-    std::unique_ptr<ITorrentSession> create_real_torrent_session();
-}
 
 static const std::string TEST_TORRENT = "tests/fixtures/test.torrent";
 

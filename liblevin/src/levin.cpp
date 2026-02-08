@@ -178,8 +178,11 @@ levin_t* levin_create(const levin_config_t* config) {
     // Initialize disk manager
     ctx->disk_manager = levin::DiskManager(ctx->min_free_bytes, ctx->min_free_percentage, ctx->max_storage_bytes);
 
-    // Create stub session (will be swapped for real session in Phase 5)
+#ifdef LEVIN_USE_STUB_SESSION
     ctx->session = std::make_unique<levin::StubTorrentSession>();
+#else
+    ctx->session = levin::create_real_torrent_session();
+#endif
 
     // Create torrent watcher
     ctx->watcher = std::make_unique<levin::TorrentWatcher>();

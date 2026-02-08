@@ -25,7 +25,7 @@
             android:textSize="16sp"
             android:layout_marginBottom="8dp" />
 
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/switch_enable"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

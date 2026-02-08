@@ -90,6 +90,8 @@ object LevinNative {
     // --- Settings ---
     external fun setDownloadLimit(handle: Long, kbps: Int)
     external fun setUploadLimit(handle: Long, kbps: Int)
+    external fun setRunOnBattery(handle: Long, runOnBattery: Boolean)
+    external fun setRunOnCellular(handle: Long, runOnCellular: Boolean)
 
     // --- Anna's Archive ---
     external fun populateTorrents(handle: Long): Int

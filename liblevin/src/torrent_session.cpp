@@ -57,7 +57,6 @@ public:
         sp.set_bool(lt::settings_pack::enable_upnp, true);
         sp.set_bool(lt::settings_pack::enable_natpmp, true);
         sp.set_int(lt::settings_pack::connections_limit, 200);
-        sp.set_int(lt::settings_pack::max_connections_per_torrent, 50);
 
         // Alert mask
         sp.set_int(lt::settings_pack::alert_mask,
@@ -80,7 +79,7 @@ public:
                 std::string buf((std::istreambuf_iterator<char>(f)),
                                  std::istreambuf_iterator<char>());
                 if (!buf.empty()) {
-                    lt::session_params params = lt::read_session_params_buf(
+                    lt::session_params params = lt::read_session_params(
                         lt::span<char const>(buf.data(), static_cast<int>(buf.size())));
                     // Merge our settings on top of the restored state
                     params.settings = sp;

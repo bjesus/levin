@@ -49,8 +49,40 @@
             android:hint="0.0"
             android:layout_marginBottom="16dp" />
 
+        <!-- Max Download Speed -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Max Download (KB/s, 0 = unlimited)"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/edit_max_download"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="0"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Max Upload Speed -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Max Upload (KB/s, 0 = unlimited)"
+            android:textSize="14sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/edit_max_upload"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:hint="0"
+            android:layout_marginBottom="16dp" />
+
         <!-- Run on Battery -->
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/switch_battery"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -59,7 +91,7 @@
             android:layout_marginBottom="16dp" />
 
         <!-- Run on Cellular -->
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/switch_cellular"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -68,7 +100,7 @@
             android:layout_marginBottom="16dp" />
 
         <!-- Run on Startup -->
-        <Switch
+        <androidx.appcompat.widget.SwitchCompat
             android:id="@+id/switch_startup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

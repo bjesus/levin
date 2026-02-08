@@ -6,10 +6,10 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Switch
+import android.widget.CompoundButton
 import android.widget.TextView
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
-import com.yoavmoshe.levin.LevinNative
 import com.yoavmoshe.levin.R
 import com.yoavmoshe.levin.service.LevinService
 
@@ -27,8 +27,16 @@ class StatsFragment : Fragment() {
     private lateinit var totalUpText: TextView
     private lateinit var diskUsageText: TextView
     private lateinit var diskBudgetText: TextView
-    private lateinit var enableSwitch: Switch
+    private lateinit var enableSwitch: SwitchCompat
     private lateinit var serviceStatusText: TextView
+
+    /** Suppress listener when updating the switch programmatically. */
+    private var suppressSwitchListener = false
+
+    private val switchListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
+        if (suppressSwitchListener) return@OnCheckedChangeListener
+        LevinService.setEnabled(isChecked)
+    }
 
     private val refreshRunnable = object : Runnable {
         override fun run() {
@@ -60,15 +68,7 @@ class StatsFragment : Fragment() {
         enableSwitch = view.findViewById(R.id.switch_enable)
         serviceStatusText = view.findViewById(R.id.text_service_status)
 
-        enableSwitch.setOnCheckedChangeListener { _, isChecked ->
-            // This is a simplified toggle - in production you'd communicate
-            // with the service via a binder or broadcast
-            if (isChecked) {
-                LevinService.start(requireContext())
-            } else {
-                LevinService.stop(requireContext())
-            }
-        }
+        enableSwitch.setOnCheckedChangeListener(switchListener)
     }
 
     override fun onResume() {
@@ -84,7 +84,11 @@ class StatsFragment : Fragment() {
     private fun updateUI() {
         val running = LevinService.isRunning
         serviceStatusText.text = if (running) "Service: Running" else "Service: Stopped"
+
+        // Update switch without triggering listener
+        suppressSwitchListener = true
         enableSwitch.isChecked = running
+        suppressSwitchListener = false
 
         val status = LevinService.lastStatus
         if (status != null) {

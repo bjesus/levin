@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -109,5 +110,10 @@ private:
     int upload_rate_limit_ = 0;
     int torrent_count_ = 0;
 };
+
+// Factory for real libtorrent session (only available when built with libtorrent)
+#ifndef LEVIN_USE_STUB_SESSION
+std::unique_ptr<ITorrentSession> create_real_torrent_session();
+#endif
 
 } // namespace levin

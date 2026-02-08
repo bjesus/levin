@@ -272,6 +272,24 @@ Java_com_yoavmoshe_levin_LevinNative_setUploadLimit(
     }
 }
 
+JNIEXPORT void JNICALL
+Java_com_yoavmoshe_levin_LevinNative_setRunOnBattery(
+        JNIEnv* /* env */, jobject /* this */, jlong handle, jboolean runOnBattery) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (ctx) {
+        levin_set_run_on_battery(ctx, runOnBattery ? 1 : 0);
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_yoavmoshe_levin_LevinNative_setRunOnCellular(
+        JNIEnv* /* env */, jobject /* this */, jlong handle, jboolean runOnCellular) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (ctx) {
+        levin_set_run_on_cellular(ctx, runOnCellular ? 1 : 0);
+    }
+}
+
 // --- Anna's Archive ---
 
 JNIEXPORT jint JNICALL

@@ -49,6 +49,45 @@ class LevinService : Service() {
         var isRunning = false
             private set
 
+        /** The levin handle, for runtime settings from the UI thread. */
+        @Volatile
+        var levinHandleForUI: Long = 0
+            private set
+
+        /** Worker handler for dispatching levin calls from UI. */
+        @Volatile
+        var workerHandlerForUI: Handler? = null
+            private set
+
+        /** Enable or disable seeding without stopping the service. */
+        fun setEnabled(enabled: Boolean) {
+            val handle = levinHandleForUI
+            val handler = workerHandlerForUI
+            if (handle != 0L && handler != null) {
+                handler.post { LevinNative.setEnabled(handle, enabled) }
+            }
+        }
+
+        /** Apply runtime settings without restarting the service. */
+        fun applySettings(context: Context) {
+            val handle = levinHandleForUI
+            val handler = workerHandlerForUI
+            if (handle == 0L || handler == null) return
+
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val runOnBattery = prefs.getBoolean("run_on_battery", false)
+            val runOnCellular = prefs.getBoolean("run_on_cellular", false)
+            val maxDownKbps = prefs.getInt("max_download_kbps", 0)
+            val maxUpKbps = prefs.getInt("max_upload_kbps", 0)
+
+            handler.post {
+                LevinNative.setRunOnBattery(handle, runOnBattery)
+                LevinNative.setRunOnCellular(handle, runOnCellular)
+                LevinNative.setDownloadLimit(handle, maxDownKbps)
+                LevinNative.setUploadLimit(handle, maxUpKbps)
+            }
+        }
+
         fun start(context: Context) {
             val intent = Intent(context, LevinService::class.java).apply {
                 action = ACTION_START
@@ -118,6 +157,8 @@ class LevinService : Service() {
         val maxStorageGb = prefs.getFloat("max_storage_gb", 0.0f)
         val runOnBattery = prefs.getBoolean("run_on_battery", false)
         val runOnCellular = prefs.getBoolean("run_on_cellular", false)
+        val maxDownloadKbps = prefs.getInt("max_download_kbps", 0)
+        val maxUploadKbps = prefs.getInt("max_upload_kbps", 0)
 
         levinHandle = LevinNative.create(
             watchDir = watchDir,
@@ -129,8 +170,8 @@ class LevinService : Service() {
             runOnBattery = runOnBattery,
             runOnCellular = runOnCellular,
             diskCheckIntervalSecs = 60,
-            maxDownloadKbps = 0,
-            maxUploadKbps = 0
+            maxDownloadKbps = maxDownloadKbps,
+            maxUploadKbps = maxUploadKbps
         )
 
         if (levinHandle == 0L) {
@@ -153,6 +194,10 @@ class LevinService : Service() {
 
         // Start monitors
         startMonitors()
+
+        // Expose handle and handler for UI-thread settings calls
+        levinHandleForUI = levinHandle
+        workerHandlerForUI = workerHandler
 
         // Begin tick loop
         isRunning = true
@@ -198,6 +243,8 @@ class LevinService : Service() {
 
     override fun onDestroy() {
         isRunning = false
+        levinHandleForUI = 0
+        workerHandlerForUI = null
         workerHandler.removeCallbacks(tickRunnable)
 
         workerHandler.post {
@@ -207,10 +254,10 @@ class LevinService : Service() {
                 LevinNative.destroy(levinHandle)
                 levinHandle = 0
             }
+            // Quit the looper from within the worker thread after cleanup
+            workerThread.quitSafely()
         }
 
-        // Give the worker a moment to clean up, then quit
-        workerThread.quitSafely()
         lastStatus = null
 
         Log.i(TAG, "Levin service destroyed")
