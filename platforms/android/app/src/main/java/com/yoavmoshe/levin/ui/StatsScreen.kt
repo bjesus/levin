@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.CompoundButton
 import android.widget.TextView
-import androidx.appcompat.widget.SwitchCompat
+import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.fragment.app.Fragment
 import com.yoavmoshe.levin.R
 import com.yoavmoshe.levin.service.LevinService
@@ -27,7 +27,7 @@ class StatsFragment : Fragment() {
     private lateinit var totalUpText: TextView
     private lateinit var diskUsageText: TextView
     private lateinit var diskBudgetText: TextView
-    private lateinit var enableSwitch: SwitchCompat
+    private lateinit var enableSwitch: MaterialSwitch
     private lateinit var serviceStatusText: TextView
 
     /** Suppress listener when updating the switch programmatically. */
@@ -88,7 +88,7 @@ class StatsFragment : Fragment() {
 
     private fun updateUI() {
         val running = LevinService.isRunning
-        serviceStatusText.text = if (running) "Service: Running" else "Service: Stopped"
+        serviceStatusText.text = if (running) "Running" else "Stopped"
 
         // Update switch without triggering listener
         suppressSwitchListener = true
@@ -97,26 +97,26 @@ class StatsFragment : Fragment() {
 
         val status = LevinService.lastStatus
         if (status != null) {
-            stateText.text = "State: ${status.stateName}"
-            torrentsText.text = "Torrents: ${status.torrentCount}"
-            peersText.text = "Peers: ${status.peerCount}"
-            downloadText.text = "Download: ${formatRate(status.downloadRate)}"
-            uploadText.text = "Upload: ${formatRate(status.uploadRate)}"
-            totalDownText.text = "Total Down: ${formatBytes(status.totalDownloaded)}"
-            totalUpText.text = "Total Up: ${formatBytes(status.totalUploaded)}"
-            diskUsageText.text = "Disk Usage: ${formatBytes(status.diskUsage)}" +
-                    if (status.overBudget) " (OVER BUDGET)" else ""
-            diskBudgetText.text = "Disk Budget: ${formatBytes(status.diskBudget)}"
+            stateText.text = status.stateName
+            torrentsText.text = "${status.torrentCount}"
+            peersText.text = "${status.peerCount}"
+            downloadText.text = formatRate(status.downloadRate)
+            uploadText.text = formatRate(status.uploadRate)
+            totalDownText.text = formatBytes(status.totalDownloaded)
+            totalUpText.text = formatBytes(status.totalUploaded)
+            diskUsageText.text = formatBytes(status.diskUsage) +
+                    if (status.overBudget) " (!)" else ""
+            diskBudgetText.text = formatBytes(status.diskBudget)
         } else {
-            stateText.text = "State: --"
-            torrentsText.text = "Torrents: --"
-            peersText.text = "Peers: --"
-            downloadText.text = "Download: --"
-            uploadText.text = "Upload: --"
-            totalDownText.text = "Total Down: --"
-            totalUpText.text = "Total Up: --"
-            diskUsageText.text = "Disk Usage: --"
-            diskBudgetText.text = "Disk Budget: --"
+            stateText.text = "--"
+            torrentsText.text = "--"
+            peersText.text = "--"
+            downloadText.text = "--"
+            uploadText.text = "--"
+            totalDownText.text = "--"
+            totalUpText.text = "--"
+            diskUsageText.text = "--"
+            diskBudgetText.text = "--"
         }
     }
 

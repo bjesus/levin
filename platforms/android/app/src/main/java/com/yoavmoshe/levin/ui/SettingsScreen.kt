@@ -12,7 +12,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import androidx.appcompat.widget.SwitchCompat
+import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.fragment.app.Fragment
 import com.yoavmoshe.levin.AnnaArchiveClient
 import com.yoavmoshe.levin.R
@@ -29,9 +29,9 @@ class SettingsFragment : Fragment() {
     private lateinit var maxStorageEdit: EditText
     private lateinit var maxDownloadEdit: EditText
     private lateinit var maxUploadEdit: EditText
-    private lateinit var batterySwitch: SwitchCompat
-    private lateinit var cellularSwitch: SwitchCompat
-    private lateinit var startupSwitch: SwitchCompat
+    private lateinit var batterySwitch: MaterialSwitch
+    private lateinit var cellularSwitch: MaterialSwitch
+    private lateinit var startupSwitch: MaterialSwitch
     private lateinit var saveButton: Button
     private lateinit var populateButton: Button
 

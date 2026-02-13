@@ -9,8 +9,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -29,6 +30,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
         requestNotificationPermission()
 
@@ -76,7 +80,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPopulateDialog() {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Welcome to Levin")
             .setMessage(
                 "Your torrent watch directory is empty. " +
@@ -103,7 +107,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startPopulate() {
         if (!hasNetworkConnectivity()) {
-            AlertDialog.Builder(this)
+            MaterialAlertDialogBuilder(this)
                 .setTitle("No Internet Connection")
                 .setMessage("Connect to the internet and try again.")
                 .setPositiveButton("Retry") { _, _ -> startPopulate() }
@@ -116,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         watchDir.mkdirs()
 
         // Show a progress dialog
-        val progressDialog = AlertDialog.Builder(this)
+        val progressDialog = MaterialAlertDialogBuilder(this)
             .setTitle("Downloading Torrents")
             .setMessage("Fetching torrent list from Anna's Archive...")
             .setCancelable(false)
@@ -166,7 +170,7 @@ class MainActivity : AppCompatActivity() {
                     // Failure — show error with retry option, don't dismiss first-run
                     val msg = result.errorMessage
                         ?: "Failed to download torrents."
-                    AlertDialog.Builder(this)
+                    MaterialAlertDialogBuilder(this)
                         .setTitle("Download Failed")
                         .setMessage(msg)
                         .setPositiveButton("Retry") { _, _ -> startPopulate() }
