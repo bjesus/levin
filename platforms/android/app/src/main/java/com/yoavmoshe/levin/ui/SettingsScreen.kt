@@ -72,7 +72,6 @@ class SettingsFragment : Fragment() {
         populateButton.setOnClickListener {
             populateButton.isEnabled = false
             populateButton.text = "Populating..."
-            Toast.makeText(requireContext(), "Fetching torrents from Anna's Archive...", Toast.LENGTH_SHORT).show()
 
             val watchDir = File(requireContext().filesDir, "watch")
 
@@ -84,7 +83,11 @@ class SettingsFragment : Fragment() {
                     object : AnnaArchiveClient.ProgressCallback {
                         override fun onProgress(current: Int, total: Int, message: String) {
                             activity?.runOnUiThread {
-                                populateButton.text = "[$current/$total] $message"
+                                if (total > 0) {
+                                    populateButton.text = "[$current/$total] $message"
+                                } else {
+                                    populateButton.text = message
+                                }
                             }
                         }
                     })
@@ -92,10 +95,13 @@ class SettingsFragment : Fragment() {
                 activity?.runOnUiThread {
                     populateButton.isEnabled = true
                     populateButton.text = "Populate Torrents from Anna's Archive"
-                    if (result >= 0) {
-                        Toast.makeText(requireContext(), "Downloaded $result torrents", Toast.LENGTH_SHORT).show()
+                    if (result.downloaded >= 0 && result.errorMessage == null) {
+                        Toast.makeText(requireContext(),
+                            "Downloaded ${result.downloaded} torrents",
+                            Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(requireContext(), "Failed to fetch torrents. Check network.", Toast.LENGTH_LONG).show()
+                        val msg = result.errorMessage ?: "Failed to fetch torrents."
+                        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
                     }
                     thread.quitSafely()
                 }

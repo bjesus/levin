@@ -21,6 +21,12 @@ object AnnaArchiveClient {
     private const val TIMEOUT_MS = 30_000
     private const val MAX_RETRIES = 3
 
+    /** Result from populateTorrents with details for UI. */
+    data class PopulateResult(
+        val downloaded: Int,     // >=0 on success, -1 on failure
+        val errorMessage: String? = null  // human-readable error when downloaded == -1
+    )
+
     interface ProgressCallback {
         fun onProgress(current: Int, total: Int, message: String)
     }
@@ -113,24 +119,28 @@ object AnnaArchiveClient {
      * Fetch torrent URLs from Anna's Archive and download .torrent files
      * into [watchDirectory].
      *
-     * @return number of newly downloaded torrents, or -1 on failure.
+     * @return PopulateResult with count of downloaded torrents (>=0) or
+     *         -1 with a human-readable error message on failure.
      */
-    fun populateTorrents(watchDirectory: File, callback: ProgressCallback? = null): Int {
+    fun populateTorrents(watchDirectory: File, callback: ProgressCallback? = null): PopulateResult {
         // Ensure directory exists
         if (!watchDirectory.exists() && !watchDirectory.mkdirs()) {
             Log.e(TAG, "Cannot create watch directory: $watchDirectory")
-            return -1
+            return PopulateResult(-1, "Cannot create watch directory")
         }
 
         // Fetch URL list
+        callback?.onProgress(0, 0, "Fetching torrent list...")
         val urls = fetchTorrentUrls()
         if (urls.isEmpty()) {
             Log.e(TAG, "No torrent URLs returned from Anna's Archive")
-            return -1
+            return PopulateResult(-1,
+                "Could not reach Anna's Archive. Check your internet connection.")
         }
 
         val total = urls.size
         var downloaded = 0
+        var failed = 0
 
         for ((i, url) in urls.withIndex()) {
             val filename = filenameFromUrl(url) ?: continue
@@ -147,10 +157,15 @@ object AnnaArchiveClient {
             if (downloadFile(url, destFile)) {
                 downloaded++
             } else {
+                failed++
                 callback?.onProgress(i + 1, total, "failed: $filename")
             }
         }
 
-        return downloaded
+        return if (downloaded > 0 || failed == 0) {
+            PopulateResult(downloaded)
+        } else {
+            PopulateResult(0, "Downloaded 0 torrents ($failed failed). Check your connection.")
+        }
     }
 }

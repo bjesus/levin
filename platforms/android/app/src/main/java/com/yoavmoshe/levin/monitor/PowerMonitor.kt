@@ -20,6 +20,9 @@ class PowerMonitor(
         private const val TAG = "PowerMonitor"
     }
 
+    /** Track last reported value to avoid spamming the callback. */
+    private var lastOnAcPower: Boolean? = null
+
     override fun onReceive(context: Context, intent: Intent) {
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
         val plugged = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
@@ -30,8 +33,11 @@ class PowerMonitor(
                 status == BatteryManager.BATTERY_STATUS_CHARGING ||
                 status == BatteryManager.BATTERY_STATUS_FULL
 
-        Log.d(TAG, "Power changed: onAcPower=$onAcPower (status=$status, plugged=$plugged)")
-        onPowerChanged(onAcPower)
+        if (onAcPower != lastOnAcPower) {
+            lastOnAcPower = onAcPower
+            Log.d(TAG, "Power changed: onAcPower=$onAcPower (status=$status, plugged=$plugged)")
+            onPowerChanged(onAcPower)
+        }
     }
 
     fun register(context: Context) {

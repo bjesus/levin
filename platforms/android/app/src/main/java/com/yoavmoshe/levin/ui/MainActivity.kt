@@ -2,6 +2,8 @@ package com.yoavmoshe.levin.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -69,29 +71,60 @@ class MainActivity : AppCompatActivity() {
         val firstRunDismissed = prefs.getBoolean("first_run_dismissed", false)
 
         if (!hasExistingTorrents && !firstRunDismissed) {
-            AlertDialog.Builder(this)
-                .setTitle("Welcome to Levin")
-                .setMessage(
-                    "Your torrent watch directory is empty. " +
-                    "Would you like to download torrent files from Anna's Archive?"
-                )
-                .setPositiveButton("Populate") { _, _ ->
-                    prefs.edit().putBoolean("first_run_dismissed", true).apply()
-                    startPopulate()
-                }
-                .setNegativeButton("Later") { _, _ ->
-                    prefs.edit().putBoolean("first_run_dismissed", true).apply()
-                }
-                .setCancelable(false)
-                .show()
+            showPopulateDialog()
         }
     }
 
+    private fun showPopulateDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Welcome to Levin")
+            .setMessage(
+                "Your torrent watch directory is empty. " +
+                "Would you like to download torrent files from Anna's Archive?"
+            )
+            .setPositiveButton("Populate") { _, _ ->
+                startPopulate()
+            }
+            .setNegativeButton("Skip") { _, _ ->
+                // Only dismiss permanently when user explicitly skips
+                getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    .edit().putBoolean("first_run_dismissed", true).apply()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun hasNetworkConnectivity(): Boolean {
+        val cm = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     private fun startPopulate() {
+        if (!hasNetworkConnectivity()) {
+            AlertDialog.Builder(this)
+                .setTitle("No Internet Connection")
+                .setMessage("Connect to the internet and try again.")
+                .setPositiveButton("Retry") { _, _ -> startPopulate() }
+                .setNegativeButton("Cancel") { _, _ -> }
+                .show()
+            return
+        }
+
         val watchDir = File(filesDir, "watch")
         watchDir.mkdirs()
 
-        Toast.makeText(this, "Fetching torrents from Anna's Archive...", Toast.LENGTH_SHORT).show()
+        // Show a progress dialog
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Downloading Torrents")
+            .setMessage("Fetching torrent list from Anna's Archive...")
+            .setCancelable(false)
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .create()
+        progressDialog.show()
 
         val thread = HandlerThread("PopulateWorker").also { it.start() }
         val handler = Handler(thread.looper)
@@ -99,14 +132,46 @@ class MainActivity : AppCompatActivity() {
             val result = AnnaArchiveClient.populateTorrents(watchDir,
                 object : AnnaArchiveClient.ProgressCallback {
                     override fun onProgress(current: Int, total: Int, message: String) {
-                        // Progress updates not shown from MainActivity
+                        runOnUiThread {
+                            if (progressDialog.isShowing) {
+                                if (total > 0) {
+                                    progressDialog.setMessage("[$current/$total] $message")
+                                } else {
+                                    progressDialog.setMessage(message)
+                                }
+                            }
+                        }
                     }
                 })
             runOnUiThread {
-                if (result >= 0) {
-                    Toast.makeText(this, "Downloaded $result torrents", Toast.LENGTH_SHORT).show()
+                if (progressDialog.isShowing) {
+                    progressDialog.dismiss()
+                }
+
+                if (result.downloaded > 0) {
+                    // Success — dismiss the first-run flag
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit().putBoolean("first_run_dismissed", true).apply()
+                    Toast.makeText(this,
+                        "Downloaded ${result.downloaded} torrents",
+                        Toast.LENGTH_SHORT).show()
+                } else if (result.downloaded == 0 && result.errorMessage == null) {
+                    // All torrents already existed
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                        .edit().putBoolean("first_run_dismissed", true).apply()
+                    Toast.makeText(this,
+                        "All torrents already present",
+                        Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this, "Failed to fetch torrents. You can try again in Settings.", Toast.LENGTH_LONG).show()
+                    // Failure — show error with retry option, don't dismiss first-run
+                    val msg = result.errorMessage
+                        ?: "Failed to download torrents."
+                    AlertDialog.Builder(this)
+                        .setTitle("Download Failed")
+                        .setMessage(msg)
+                        .setPositiveButton("Retry") { _, _ -> startPopulate() }
+                        .setNegativeButton("Cancel") { _, _ -> }
+                        .show()
                 }
                 thread.quitSafely()
             }

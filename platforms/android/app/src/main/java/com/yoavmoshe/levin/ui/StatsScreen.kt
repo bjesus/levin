@@ -35,7 +35,12 @@ class StatsFragment : Fragment() {
 
     private val switchListener = CompoundButton.OnCheckedChangeListener { _, isChecked ->
         if (suppressSwitchListener) return@OnCheckedChangeListener
-        LevinService.setEnabled(isChecked)
+        val ctx = requireContext()
+        if (isChecked) {
+            LevinService.start(ctx)
+        } else {
+            LevinService.stop(ctx)
+        }
     }
 
     private val refreshRunnable = object : Runnable {

@@ -22,6 +22,10 @@ class NetworkMonitor(
 
     private var connectivityManager: ConnectivityManager? = null
 
+    /** Track last reported values to avoid spamming the callback. */
+    private var lastWifi: Boolean? = null
+    private var lastCellular: Boolean? = null
+
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
             updateState()
@@ -70,7 +74,11 @@ class NetworkMonitor(
         val hasWifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
         val hasCellular = caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true
 
-        Log.d(TAG, "Network changed: wifi=$hasWifi cellular=$hasCellular")
-        onNetworkChanged(hasWifi, hasCellular)
+        if (hasWifi != lastWifi || hasCellular != lastCellular) {
+            lastWifi = hasWifi
+            lastCellular = hasCellular
+            Log.d(TAG, "Network changed: wifi=$hasWifi cellular=$hasCellular")
+            onNetworkChanged(hasWifi, hasCellular)
+        }
     }
 }
