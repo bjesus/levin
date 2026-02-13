@@ -91,6 +91,7 @@ void levin_set_download_limit(levin_t* ctx, int kbps);
 void levin_set_upload_limit(levin_t* ctx, int kbps);
 void levin_set_run_on_battery(levin_t* ctx, int run_on_battery);
 void levin_set_run_on_cellular(levin_t* ctx, int run_on_cellular);
+void levin_set_disk_limits(levin_t* ctx, uint64_t min_free_bytes, double min_free_pct, uint64_t max_storage_bytes);
 
 /* --- Anna's Archive --- */
 int levin_populate_torrents(levin_t* ctx, levin_progress_cb cb, void* userdata);

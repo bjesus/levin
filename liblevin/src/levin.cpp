@@ -17,12 +17,7 @@
 #include <sys/stat.h>
 #endif
 
-#if defined(__ANDROID__)
-#include <android/log.h>
-#define LEVIN_LOG(fmt, ...) __android_log_print(ANDROID_LOG_INFO, "LevinCore", fmt, ##__VA_ARGS__)
-#else
-#define LEVIN_LOG(fmt, ...) do {} while(0)
-#endif
+#include "levin_log.h"
 
 namespace fs = std::filesystem;
 
@@ -140,15 +135,28 @@ static void do_disk_check(levin_t* ctx) {
 
     ctx->state_machine.update_storage(!result.over_budget);
 
-    // If over budget, delete files to free space
+    // Set per-file download priorities so we never download more than the budget allows.
+    // Files that don't fit get priority 0 (don't download).
+    if (ctx->session) {
+        ctx->session->apply_budget_priorities(result.budget_bytes);
+    }
+
+    // Safety net: if somehow over budget (e.g. files added externally), delete to recover
     if (result.over_budget && result.deficit_bytes > 0) {
-        ctx->disk_manager.delete_to_free(ctx->data_directory, result.deficit_bytes);
+        uint64_t freed = ctx->disk_manager.delete_to_free(ctx->data_directory, result.deficit_bytes);
+        // Update fs_free to reflect freed space so recalculation is accurate
+        ctx->fs_free += freed;
         // Recalculate after deletion
         ctx->disk_usage = calculate_disk_usage(ctx->data_directory);
         auto r2 = ctx->disk_manager.calculate(ctx->fs_total, ctx->fs_free, ctx->disk_usage);
         ctx->disk_budget = r2.budget_bytes;
         ctx->over_budget = r2.over_budget ? 1 : 0;
         ctx->state_machine.update_storage(!r2.over_budget);
+
+        // Re-apply priorities with the updated budget
+        if (ctx->session) {
+            ctx->session->apply_budget_priorities(r2.budget_bytes);
+        }
     }
 }
 
@@ -437,6 +445,18 @@ void levin_set_run_on_battery(levin_t* ctx, int run_on_battery) {
     // Re-evaluate battery condition with current power state
     bool battery_ok = ctx->on_ac_power || ctx->run_on_battery;
     ctx->state_machine.update_battery(battery_ok);
+}
+
+void levin_set_disk_limits(levin_t* ctx, uint64_t min_free_bytes, double min_free_pct, uint64_t max_storage_bytes) {
+    if (!ctx) return;
+    ctx->min_free_bytes = min_free_bytes;
+    ctx->min_free_percentage = min_free_pct;
+    ctx->max_storage_bytes = max_storage_bytes;
+    ctx->disk_manager = levin::DiskManager(min_free_bytes, min_free_pct, max_storage_bytes);
+    // Trigger immediate re-evaluation
+    if (ctx->started && ctx->fs_total > 0) {
+        do_disk_check(ctx);
+    }
 }
 
 void levin_set_run_on_cellular(levin_t* ctx, int run_on_cellular) {

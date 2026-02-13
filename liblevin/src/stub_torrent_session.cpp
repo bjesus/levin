@@ -62,6 +62,8 @@ std::vector<std::string> StubTorrentSession::get_trackers(const std::string& /*i
     return {};
 }
 
+void StubTorrentSession::apply_budget_priorities(uint64_t /*budget_bytes*/) {}
+
 void StubTorrentSession::save_state(const std::string& /*path*/) {}
 void StubTorrentSession::load_state(const std::string& /*path*/) {}
 

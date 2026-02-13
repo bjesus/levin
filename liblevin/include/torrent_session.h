@@ -62,6 +62,9 @@ public:
     virtual bool is_webtorrent_enabled() const = 0;
     virtual std::vector<std::string> get_trackers(const std::string& info_hash) const = 0;
 
+    // Budget-aware file priorities: disable downloading files that don't fit in budget
+    virtual void apply_budget_priorities(uint64_t budget_bytes) = 0;
+
     // Session state persistence
     virtual void save_state(const std::string& path) = 0;
     virtual void load_state(const std::string& path) = 0;
@@ -99,6 +102,8 @@ public:
 
     bool is_webtorrent_enabled() const override;
     std::vector<std::string> get_trackers(const std::string& info_hash) const override;
+
+    void apply_budget_priorities(uint64_t budget_bytes) override;
 
     void save_state(const std::string& path) override;
     void load_state(const std::string& path) override;

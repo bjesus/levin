@@ -1,4 +1,5 @@
 #include "torrent_session.h"
+#include "levin_log.h"
 
 #ifndef LEVIN_USE_STUB_SESSION
 
@@ -20,6 +21,8 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include <numeric>
+#include <random>
 #include <filesystem>
 #include <unordered_map>
 
@@ -278,6 +281,65 @@ public:
             result.push_back(t.url);
         }
         return result;
+    }
+
+    void apply_budget_priorities(uint64_t budget_bytes) override {
+        if (!session_) return;
+
+        uint64_t remaining = budget_bytes;
+        int total_enabled = 0;
+        int total_disabled = 0;
+        int total_complete = 0;
+
+        for (auto& [hash, handle] : torrents_) {
+            if (!handle.is_valid()) continue;
+
+            auto ti = handle.torrent_file();
+            if (!ti) continue;
+
+            const auto& fs = ti->layout();
+            int num_files = fs.num_files();
+            if (num_files == 0) continue;
+
+            // Get per-file progress (bytes downloaded per file)
+            std::vector<std::int64_t> progress;
+            handle.file_progress(progress, lt::torrent_handle::piece_granularity);
+
+            // Build shuffled index list so we don't always prioritize the same files
+            std::vector<int> indices(num_files);
+            std::iota(indices.begin(), indices.end(), 0);
+            // Use a deterministic seed per torrent so priorities don't flip-flop each tick
+            std::seed_seq seed{std::hash<std::string>{}(hash)};
+            std::mt19937 rng(seed);
+            std::shuffle(indices.begin(), indices.end(), rng);
+
+            for (int idx : indices) {
+                std::int64_t file_size = fs.file_size(lt::file_index_t{idx});
+                std::int64_t downloaded = (idx < static_cast<int>(progress.size())) ? progress[idx] : 0;
+                std::int64_t bytes_left = file_size - downloaded;
+
+                if (bytes_left <= 0) {
+                    // Already complete — keep default priority for seeding
+                    total_complete++;
+                    continue;
+                }
+
+                if (static_cast<uint64_t>(bytes_left) <= remaining) {
+                    // Fits in budget — enable download
+                    handle.file_priority(lt::file_index_t{idx}, lt::default_priority);
+                    remaining -= static_cast<uint64_t>(bytes_left);
+                    total_enabled++;
+                } else {
+                    // Doesn't fit — disable download
+                    handle.file_priority(lt::file_index_t{idx}, lt::dont_download);
+                    total_disabled++;
+                }
+            }
+        }
+
+        LEVIN_LOG("apply_budget_priorities: budget=%llu remaining=%llu enabled=%d disabled=%d complete=%d",
+                  (unsigned long long)budget_bytes, (unsigned long long)remaining,
+                  total_enabled, total_disabled, total_complete);
     }
 
     void save_state(const std::string& path) override {
