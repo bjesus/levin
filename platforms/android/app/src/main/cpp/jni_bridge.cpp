@@ -290,6 +290,19 @@ Java_com_yoavmoshe_levin_LevinNative_setRunOnCellular(
     }
 }
 
+JNIEXPORT void JNICALL
+Java_com_yoavmoshe_levin_LevinNative_setDiskLimits(
+        JNIEnv* /* env */, jobject /* this */, jlong handle,
+        jlong minFreeBytes, jdouble minFreePct, jlong maxStorageBytes) {
+    auto* ctx = reinterpret_cast<levin_t*>(handle);
+    if (ctx) {
+        levin_set_disk_limits(ctx,
+                              static_cast<uint64_t>(minFreeBytes),
+                              static_cast<double>(minFreePct),
+                              static_cast<uint64_t>(maxStorageBytes));
+    }
+}
+
 // --- Anna's Archive ---
 
 JNIEXPORT jint JNICALL

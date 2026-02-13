@@ -79,12 +79,17 @@ class LevinService : Service() {
             val runOnCellular = prefs.getBoolean("run_on_cellular", false)
             val maxDownKbps = prefs.getInt("max_download_kbps", 0)
             val maxUpKbps = prefs.getInt("max_upload_kbps", 0)
+            val minFreeGb = prefs.getFloat("min_free_gb", 2.0f)
+            val maxStorageGb = prefs.getFloat("max_storage_gb", 0.0f)
+            val minFreeBytes = (minFreeGb * 1_073_741_824L).toLong()
+            val maxStorageBytes = if (maxStorageGb > 0f) (maxStorageGb * 1_073_741_824L).toLong() else 0L
 
             handler.post {
                 LevinNative.setRunOnBattery(handle, runOnBattery)
                 LevinNative.setRunOnCellular(handle, runOnCellular)
                 LevinNative.setDownloadLimit(handle, maxDownKbps)
                 LevinNative.setUploadLimit(handle, maxUpKbps)
+                LevinNative.setDiskLimits(handle, minFreeBytes, 0.05, maxStorageBytes)
             }
         }
 
