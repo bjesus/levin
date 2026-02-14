@@ -37,11 +37,34 @@ jobs:
       - name: E2E tests
         run: LEVIN_BIN=./build/platforms/linux/levin bats e2e/test_*.bats
 
+      - name: Build deb package
+        run: |
+          PKG=levin_0.1.0_amd64
+          mkdir -p $PKG/DEBIAN
+          mkdir -p $PKG/usr/bin
+          mkdir -p $PKG/usr/lib/systemd/user
+
+          cp packaging/deb/DEBIAN/control $PKG/DEBIAN/
+          cp build/platforms/linux/levin $PKG/usr/bin/levin
+          chmod 755 $PKG/usr/bin/levin
+          cp packaging/systemd/levin.service $PKG/usr/lib/systemd/user/levin.service
+
+          # Update ExecStart/ExecStop paths for system-wide install
+          sed -i 's|%h/.local/bin/levin|/usr/bin/levin|g' $PKG/usr/lib/systemd/user/levin.service
+
+          dpkg-deb --build --root-owner-group $PKG
+
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: levin-linux-x86_64
           path: build/platforms/linux/levin
+
+      - name: Upload deb package
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-deb
+          path: levin_0.1.0_amd64.deb
 
       - name: Attach to release
         if: github.event_name == 'release'
@@ -49,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/platforms/linux/levin levin-linux-x86_64
-          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64
+          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64 levin_0.1.0_amd64.deb
 
   android:
     name: Android
