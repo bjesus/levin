@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libboost-dev libssl-dev bats
+          sudo apt-get install -y libcurl4-openssl-dev libboost-dev libboost-system-dev libssl-dev bats
 
       - name: Cache libtorrent source
         uses: actions/cache@v4
