@@ -303,10 +303,14 @@ class LevinService : Service() {
 
     private fun updateNotification() {
         val status = lastStatus ?: return
-        val text = "${status.stateName} | " +
-                "Up: ${formatRate(status.uploadRate)} | " +
-                "Down: ${formatRate(status.downloadRate)} | " +
-                "Peers: ${status.peerCount}"
+        val text = if (status.stateName == "PAUSED") {
+            "Paused"
+        } else {
+            "${status.stateName} | " +
+                    "Up: ${formatRate(status.uploadRate)} | " +
+                    "Down: ${formatRate(status.downloadRate)} | " +
+                    "Peers: ${status.peerCount}"
+        }
         val nm = getSystemService(NotificationManager::class.java)
         nm.notify(NOTIFICATION_ID, buildNotification(text))
     }
