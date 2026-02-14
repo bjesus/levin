@@ -23,9 +23,6 @@ platforms/android/build/
 platforms/android/app/build/
 platforms/android/app/.cxx/
 platforms/android/local.properties
-platforms/android/gradlew
-platforms/android/gradlew.bat
-platforms/android/gradle/
 platforms/android/.deps-build/
 platforms/android/prebuilt/
 *.apk

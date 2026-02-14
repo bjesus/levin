@@ -1,0 +1,114 @@
+name: Build
+
+on:
+  push:
+  release:
+    types: [created]
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libboost-dev libssl-dev bats
+
+      - name: Cache libtorrent source
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/*-src
+          key: linux-lt-src-${{ hashFiles('liblevin/CMakeLists.txt') }}
+          restore-keys: linux-lt-src-
+
+      - name: Configure
+        run: cmake -S . -B build -DLEVIN_USE_STUB_SESSION=OFF -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Unit tests
+        run: ctest --output-on-failure --test-dir build
+
+      - name: E2E tests
+        run: LEVIN_BIN=./build/platforms/linux/levin bats e2e/test_*.bats
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-linux-x86_64
+          path: build/platforms/linux/levin
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp build/platforms/linux/levin levin-linux-x86_64
+          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64
+
+  android:
+    name: Android
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: sdkmanager "ndk;27.0.12077973"
+
+      - name: Cache native dependencies
+        id: cache-prebuilt
+        uses: actions/cache@v4
+        with:
+          path: platforms/android/prebuilt
+          key: android-prebuilt-${{ hashFiles('platforms/android/build-deps.sh') }}
+
+      - name: Build native dependencies
+        if: steps.cache-prebuilt.outputs.cache-hit != 'true'
+        working-directory: platforms/android
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: ./build-deps.sh
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache libtorrent source
+        uses: actions/cache@v4
+        with:
+          path: platforms/android/app/.cxx/**/build/_deps/*-src
+          key: android-lt-src-${{ hashFiles('platforms/android/app/src/main/cpp/CMakeLists.txt') }}
+          restore-keys: android-lt-src-
+
+      - name: Build debug APK
+        working-directory: platforms/android
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-android
+          path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk levin-android.apk
+          gh release upload "${{ github.event.release.tag_name }}" levin-android.apk
