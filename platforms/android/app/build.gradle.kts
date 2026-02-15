@@ -11,8 +11,8 @@ android {
         applicationId = "com.yoavmoshe.levin"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.0.1"
+        versionCode = 2
+        versionName = "0.0.2"
 
         ndk {
             // armeabi-v7a dropped: OpenSSL ARM assembly has PIC relocation
@@ -26,9 +26,18 @@ android {
                 arguments(
                     "-DLEVIN_USE_STUB_SESSION=OFF",
                     "-DLEVIN_BUILD_TESTS=OFF",
-                    "-DANDROID_STL=c++_shared"
+                    "-DANDROID_STL=c++_shared",
+                    "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
                 )
             }
+        }
+    }
+
+    signingConfigs {
+        // Use the shared debug key for release builds.
+        // Good enough for a sideloaded open-source app.
+        named("debug") {
+            // Uses default debug.keystore automatically
         }
     }
 
@@ -39,6 +48,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

@@ -12,6 +12,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import androidx.fragment.app.Fragment
 import com.yoavmoshe.levin.R
 import com.yoavmoshe.levin.service.LevinService
+import java.text.NumberFormat
 
 class StatsFragment : Fragment() {
 
@@ -101,7 +102,7 @@ class StatsFragment : Fragment() {
         if (status != null) {
             stateText.text = status.stateName
             torrentsText.text = "${status.torrentCount}"
-            booksText.text = "${status.fileCount}"
+            booksText.text = NumberFormat.getIntegerInstance().format(status.fileCount)
             peersText.text = "${status.peerCount}"
             downloadText.text = formatRate(status.downloadRate)
             uploadText.text = formatRate(status.uploadRate)

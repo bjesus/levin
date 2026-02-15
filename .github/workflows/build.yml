@@ -42,7 +42,7 @@ jobs:
 
       - name: Build deb package
         run: |
-          PKG=levin_0.0.1_amd64
+          PKG=levin_0.0.2_amd64
           mkdir -p $PKG/DEBIAN
           mkdir -p $PKG/usr/bin
           mkdir -p $PKG/usr/lib/systemd/user
@@ -67,7 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: levin-deb
-          path: levin_0.0.1_amd64.deb
+          path: levin_0.0.2_amd64.deb
 
       - name: Attach to release
         if: github.event_name == 'release'
@@ -75,7 +75,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/platforms/linux/levin levin-linux-x86_64
-          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64 levin_0.0.1_amd64.deb
+          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64 levin_0.0.2_amd64.deb
 
   android:
     name: Android
@@ -119,22 +119,29 @@ jobs:
           key: android-lt-src-${{ hashFiles('platforms/android/app/src/main/cpp/CMakeLists.txt') }}
           restore-keys: android-lt-src-
 
-      - name: Build debug APK
+      - name: Build APKs
         working-directory: platforms/android
         env:
           ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug assembleRelease
 
-      - name: Upload APK
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-android-debug
+          path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
           name: levin-android
-          path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          path: platforms/android/app/build/outputs/apk/release/app-release.apk
 
       - name: Attach to release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk levin-android.apk
-          gh release upload "${{ github.event.release.tag_name }}" levin-android.apk
+          cp platforms/android/app/build/outputs/apk/release/app-release.apk levin-android.apk
+          cp platforms/android/app/build/outputs/apk/debug/app-debug.apk levin-android-debug.apk
+          gh release upload "${{ github.event.release.tag_name }}" levin-android.apk levin-android-debug.apk

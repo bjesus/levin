@@ -142,7 +142,7 @@ class LevinService : Service() {
                 return START_NOT_STICKY
             }
             else -> {
-                startForeground(NOTIFICATION_ID, buildNotification("Starting..."))
+                startForeground(NOTIFICATION_ID, buildNotification("Starting"))
                 workerHandler.post { initLevin() }
             }
         }
@@ -285,7 +285,7 @@ class LevinService : Service() {
         nm.createNotificationChannel(channel)
     }
 
-    private fun buildNotification(text: String): Notification {
+    private fun buildNotification(title: String, text: String? = null): Notification {
         val pendingIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
@@ -293,26 +293,31 @@ class LevinService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Levin")
-            .setContentText(text)
+            .setContentTitle(title)
+            .apply { if (text != null) setContentText(text) }
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
             .build()
     }
 
+    private fun titleCase(state: String): String {
+        return state.lowercase().replaceFirstChar { it.uppercase() }
+    }
+
     private fun updateNotification() {
         val status = lastStatus ?: return
-        val text = if (status.stateName == "PAUSED") {
-            "Paused"
+        if (status.stateName == "PAUSED") {
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.notify(NOTIFICATION_ID, buildNotification("Paused"))
         } else {
-            "${status.stateName} | " +
-                    "Up: ${formatRate(status.uploadRate)} | " +
+            val title = titleCase(status.stateName)
+            val text = "Up: ${formatRate(status.uploadRate)} | " +
                     "Down: ${formatRate(status.downloadRate)} | " +
                     "Peers: ${status.peerCount}"
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.notify(NOTIFICATION_ID, buildNotification(title, text))
         }
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.notify(NOTIFICATION_ID, buildNotification(text))
     }
 
     private fun formatRate(bytesPerSec: Int): String {

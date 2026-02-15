@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#E8E5D8</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
 
     <!-- Material 3 Olive Green palette — light mode -->
     <!-- Seed color: #4B6A2F (olive green from the app icon's leaves) -->

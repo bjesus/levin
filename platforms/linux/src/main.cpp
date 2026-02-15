@@ -76,6 +76,17 @@ static std::string format_rate(int bytes_per_sec) {
     return format_bytes(static_cast<uint64_t>(bytes_per_sec)) + "/s";
 }
 
+static std::string format_number(const std::string& s) {
+    // Insert commas as thousands separators: "13194" -> "13,194"
+    std::string result;
+    int n = static_cast<int>(s.size());
+    for (int i = 0; i < n; ++i) {
+        if (i > 0 && (n - i) % 3 == 0) result += ',';
+        result += s[i];
+    }
+    return result;
+}
+
 // ---------------------------------------------------------------------------
 // State name helper
 // ---------------------------------------------------------------------------
@@ -306,7 +317,7 @@ static int cmd_status() {
 
     std::printf("State:       %s\n", get("state").c_str());
     std::printf("Torrents:    %s\n", get("torrent_count").c_str());
-    std::printf("Books:       %s\n", get("file_count").c_str());
+    std::printf("Books:       %s\n", format_number(get("file_count")).c_str());
     std::printf("Peers:       %s\n", get("peer_count").c_str());
     std::printf("Download:    %s\n",
                 format_rate(std::atoi(get("download_rate").c_str())).c_str());
