@@ -20,6 +20,7 @@ class StatsFragment : Fragment() {
 
     private lateinit var stateText: TextView
     private lateinit var torrentsText: TextView
+    private lateinit var booksText: TextView
     private lateinit var peersText: TextView
     private lateinit var downloadText: TextView
     private lateinit var uploadText: TextView
@@ -63,6 +64,7 @@ class StatsFragment : Fragment() {
 
         stateText = view.findViewById(R.id.text_state)
         torrentsText = view.findViewById(R.id.text_torrents)
+        booksText = view.findViewById(R.id.text_books)
         peersText = view.findViewById(R.id.text_peers)
         downloadText = view.findViewById(R.id.text_download_rate)
         uploadText = view.findViewById(R.id.text_upload_rate)
@@ -99,6 +101,7 @@ class StatsFragment : Fragment() {
         if (status != null) {
             stateText.text = status.stateName
             torrentsText.text = "${status.torrentCount}"
+            booksText.text = "${status.fileCount}"
             peersText.text = "${status.peerCount}"
             downloadText.text = formatRate(status.downloadRate)
             uploadText.text = formatRate(status.uploadRate)
@@ -110,6 +113,7 @@ class StatsFragment : Fragment() {
         } else {
             stateText.text = "--"
             torrentsText.text = "--"
+            booksText.text = "--"
             peersText.text = "--"
             downloadText.text = "--"
             uploadText.text = "--"

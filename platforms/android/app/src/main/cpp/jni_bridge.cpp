@@ -244,7 +244,7 @@ Java_com_yoavmoshe_levin_LevinNative_getStatus(
                           (jint)status.peer_count,
                           (jint)status.download_rate,
                           (jint)status.upload_rate,
-                          (jint)0, // reserved
+                          (jint)status.file_count,
                           (jlong)status.total_downloaded,
                           (jlong)status.total_uploaded,
                           (jlong)status.disk_usage,

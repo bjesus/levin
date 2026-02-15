@@ -63,6 +63,7 @@ struct levin_ctx {
     uint64_t disk_usage = 0;
     uint64_t disk_budget = 0;
     int over_budget = 0;
+    int file_count = 0;
 
     // Tick counter for periodic disk checks
     int tick_count = 0;
@@ -107,28 +108,39 @@ static void apply_state_actions(levin_t* ctx, levin::State new_state) {
     }
 }
 
-// Calculate current disk usage of data directory
-static uint64_t calculate_disk_usage(const std::string& data_dir) {
-    uint64_t total = 0;
+// Calculate current disk usage and count non-empty files in data directory
+struct DiskScan {
+    uint64_t usage;
+    int file_count;
+};
+
+static DiskScan calculate_disk_usage(const std::string& data_dir) {
+    DiskScan result{0, 0};
     std::error_code ec;
-    if (!fs::exists(data_dir, ec)) return 0;
+    if (!fs::exists(data_dir, ec)) return result;
     for (auto& entry : fs::recursive_directory_iterator(data_dir, ec)) {
         if (entry.is_regular_file()) {
 #if defined(__linux__) || defined(__APPLE__)
             struct stat st;
             if (::stat(entry.path().c_str(), &st) == 0) {
-                total += static_cast<uint64_t>(st.st_blocks) * 512;
+                uint64_t size = static_cast<uint64_t>(st.st_blocks) * 512;
+                result.usage += size;
+                if (st.st_size > 0) result.file_count++;
             }
 #else
-            total += entry.file_size(ec);
+            auto sz = entry.file_size(ec);
+            result.usage += sz;
+            if (sz > 0) result.file_count++;
 #endif
         }
     }
-    return total;
+    return result;
 }
 
 static void do_disk_check(levin_t* ctx) {
-    ctx->disk_usage = calculate_disk_usage(ctx->data_directory);
+    auto scan = calculate_disk_usage(ctx->data_directory);
+    ctx->disk_usage = scan.usage;
+    ctx->file_count = scan.file_count;
     auto result = ctx->disk_manager.calculate(ctx->fs_total, ctx->fs_free, ctx->disk_usage);
     ctx->disk_budget = result.budget_bytes;
     ctx->over_budget = result.over_budget ? 1 : 0;
@@ -147,7 +159,9 @@ static void do_disk_check(levin_t* ctx) {
         // Update fs_free to reflect freed space so recalculation is accurate
         ctx->fs_free += freed;
         // Recalculate after deletion
-        ctx->disk_usage = calculate_disk_usage(ctx->data_directory);
+        auto scan2 = calculate_disk_usage(ctx->data_directory);
+        ctx->disk_usage = scan2.usage;
+        ctx->file_count = scan2.file_count;
         auto r2 = ctx->disk_manager.calculate(ctx->fs_total, ctx->fs_free, ctx->disk_usage);
         ctx->disk_budget = r2.budget_bytes;
         ctx->over_budget = r2.over_budget ? 1 : 0;
@@ -362,6 +376,7 @@ levin_status_t levin_get_status(levin_t* ctx) {
     status.disk_usage = ctx->disk_usage;
     status.disk_budget = ctx->disk_budget;
     status.over_budget = ctx->over_budget;
+    status.file_count = ctx->file_count;
 
     return status;
 }

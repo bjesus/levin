@@ -43,6 +43,7 @@ typedef struct {
     uint64_t      disk_usage;
     uint64_t      disk_budget;
     int           over_budget;
+    int           file_count;       /* non-empty files in data dir (books seeding) */
 } levin_status_t;
 
 typedef struct {

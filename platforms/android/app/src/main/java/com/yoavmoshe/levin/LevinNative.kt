@@ -19,7 +19,7 @@ object LevinNative {
         val peerCount: Int,
         val downloadRate: Int,
         val uploadRate: Int,
-        val reserved: Int,
+        val fileCount: Int,
         val totalDownloaded: Long,
         val totalUploaded: Long,
         val diskUsage: Long,

@@ -120,6 +120,7 @@ static levin::linux_shell::Message handle_ipc(
         reply["disk_usage"]       = std::to_string(st.disk_usage);
         reply["disk_budget"]      = std::to_string(st.disk_budget);
         reply["over_budget"]      = std::to_string(st.over_budget);
+        reply["file_count"]       = std::to_string(st.file_count);
         return reply;
     }
 
@@ -305,6 +306,7 @@ static int cmd_status() {
 
     std::printf("State:       %s\n", get("state").c_str());
     std::printf("Torrents:    %s\n", get("torrent_count").c_str());
+    std::printf("Books:       %s\n", get("file_count").c_str());
     std::printf("Peers:       %s\n", get("peer_count").c_str());
     std::printf("Download:    %s\n",
                 format_rate(std::atoi(get("download_rate").c_str())).c_str());
