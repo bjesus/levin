@@ -1,6 +1,6 @@
 # Maintainer: Levin Contributors <levin@annas-archive.org>
 pkgname=levin
-pkgver=0.1.0
+pkgver=0.0.1
 pkgrel=1
 pkgdesc="Background torrent seeding client for Anna's Archive"
 arch=('x86_64')

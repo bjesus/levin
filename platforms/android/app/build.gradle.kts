@@ -12,7 +12,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.0.1"
 
         ndk {
             // armeabi-v7a dropped: OpenSSL ARM assembly has PIC relocation

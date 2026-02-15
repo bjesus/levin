@@ -1,5 +1,5 @@
 Name:           levin
-Version:        0.1.0
+Version:        0.0.1
 Release:        1%{?dist}
 Summary:        Background torrent seeding client for Anna's Archive
 
@@ -55,5 +55,5 @@ systemctl --user disable levin 2>/dev/null || true
 %dir %{_sysconfdir}/skel/.config/levin/torrents
 
 %changelog
-* Thu Feb 06 2026 Levin Contributors <levin@annas-archive.org> - 0.1.0-1
+* Thu Feb 06 2026 Levin Contributors <levin@annas-archive.org> - 0.0.1-1
 - Initial package

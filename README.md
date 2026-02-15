@@ -1,6 +1,6 @@
 # Levin
 
-Levin is an easy way to support [Anna's Archive](https://annas-archive.li) using resources you already have and aren't using -- your idle phone or laptop, spare disk space, and available WiFi bandwidth. Install it, and it quietly seeds archive torrents in the background. It pauses on battery and cellular, stays within disk limits you set, and requires no configuration. It costs you nothing, and helps keep the world's largest open library available to everyone.
+Levin is an easy way to support Anna's Archive using resources you already have and aren't using -- your idle phone or laptop, spare disk space, and available WiFi bandwidth. Install it, and it quietly seeds archive torrents in the background. It pauses on battery and cellular, stays within disk limits you set, and requires no configuration. It costs you nothing, and helps keep the world's largest open library available to everyone.
 
 Under the hood, Levin is a torrent client with built-in WebTorrent support, so browsers can download directly from Levin seeders without needing a torrent client of their own.
 
@@ -12,7 +12,7 @@ Download the `.deb` package or the standalone binary from the [releases page](ht
 
 ```sh
 # Debian/Ubuntu
-sudo dpkg -i levin_0.1.0_amd64.deb
+sudo dpkg -i levin_0.0.1_amd64.deb
 
 # Or just copy the binary
 chmod +x levin-linux-x86_64

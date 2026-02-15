@@ -39,7 +39,7 @@ jobs:
 
       - name: Build deb package
         run: |
-          PKG=levin_0.1.0_amd64
+          PKG=levin_0.0.1_amd64
           mkdir -p $PKG/DEBIAN
           mkdir -p $PKG/usr/bin
           mkdir -p $PKG/usr/lib/systemd/user
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: levin-deb
-          path: levin_0.1.0_amd64.deb
+          path: levin_0.0.1_amd64.deb
 
       - name: Attach to release
         if: github.event_name == 'release'
@@ -72,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp build/platforms/linux/levin levin-linux-x86_64
-          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64 levin_0.1.0_amd64.deb
+          gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64 levin_0.0.1_amd64.deb
 
   android:
     name: Android
