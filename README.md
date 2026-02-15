@@ -1,12 +1,19 @@
-# Levin
+<p align="center"><img width="100"  alt="levin" src="https://github.com/user-attachments/assets/cc1c141b-edb7-4bdf-930b-24c3d8329359" /></p>
+<h1 align="center">Levin</h1>
+<p align="center"><strong>Anna archives, Levin seeds</strong></p>
 
-Levin is an easy way to support Anna's Archive using resources you already have and aren't using -- your idle phone or laptop, spare disk space, and available WiFi bandwidth. Install it, and it quietly seeds archive torrents in the background. It pauses on battery and cellular, stays within disk limits you set, and requires no configuration. It costs you nothing, and helps keep the world's largest open library available to everyone.
+Levin is the easiest way to support Anna's Archive using resources you already have and aren't using — your idle phone or laptop, spare disk space, and network connection. It quietly seeds archive torrents in the background, while completely pausing on battery or cellular, and deleting its own data if the available diskspace goes below the limit you set. It costs you nothing, and helps keep the world's largest open library available to everyone.
 
-Under the hood, Levin is a torrent client with built-in WebTorrent support, so browsers can download directly from Levin seeders without needing a torrent client of their own.
+## Android
 
-## Install
+Your phone is one of the best places to run Levin, because unlike your laptop, it is often on while you're not using it. Levin defaults to running only when being charged and on a WiFi.
 
-### Linux
+Download the APK from the [releases page](https://github.com/bjesus/levin/releases) and install it. On first launch, the app will offer to fetch torrent files from Anna's Archive.
+
+
+## Linux
+
+### Install
 
 Download the `.deb` package or the standalone binary from the [releases page](https://github.com/bjesus/levin/releases).
 
@@ -25,11 +32,7 @@ If you installed the `.deb`, a systemd user service is included:
 systemctl --user enable --now levin
 ```
 
-### Android
-
-Download the APK from the [releases page](https://github.com/bjesus/levin/releases) and install it. On first launch, the app will offer to fetch torrent files from Anna's Archive.
-
-## Usage
+### Usage
 
 ```
 levin start      Start the daemon
@@ -93,6 +96,3 @@ cd platforms/android
 ./gradlew assembleDebug
 ```
 
-## License
-
-This project is not yet licensed. See the repository for updates.
