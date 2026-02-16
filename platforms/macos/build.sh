@@ -87,18 +87,19 @@ else
 fi
 
 # Build for the native architecture
+BINARY="$SCRIPT_DIR/levin-bin"
 swiftc \
     -target "$(uname -m)-apple-macos14.0" \
     "${SWIFT_FLAGS[@]}" \
     "${SWIFT_FILES[@]}" \
-    -o "$SCRIPT_DIR/Levin"
+    -o "$BINARY"
 
 echo "==> Creating Levin.app bundle"
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
-cp "$SCRIPT_DIR/Levin" "$APP_DIR/Contents/MacOS/"
+cp "$BINARY" "$APP_DIR/Contents/MacOS/Levin"
 cp "$RES_DIR/Info.plist" "$APP_DIR/Contents/"
 
 # Generate .icns from AppIcon.png using iconutil (macOS only)
@@ -125,6 +126,6 @@ fi
 [ -f "$RES_DIR/MenuBarIcon@2x.png" ] && cp "$RES_DIR/MenuBarIcon@2x.png" "$APP_DIR/Contents/Resources/"
 
 # Clean up intermediate binary
-rm -f "$SCRIPT_DIR/Levin"
+rm -f "$BINARY"
 
 echo "==> Done: $APP_DIR"

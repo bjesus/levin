@@ -118,20 +118,27 @@ final class LevinEngine: ObservableObject {
                 return
             }
 
-            // Bridge the progress callback through a context struct
-            struct Context {
-                var progress: (Int, Int, String) -> Void
+            // Bridge the progress callback through an opaque context.
+            // We use Unmanaged to prevent ARC from releasing the closure box
+            // while the C callback is still active.
+            class Box {
+                let fn: (Int, Int, String) -> Void
+                init(_ fn: @escaping (Int, Int, String) -> Void) { self.fn = fn }
             }
-            var ctx = Context(progress: progress)
+            let box = Box(progress)
+            let raw = Unmanaged.passRetained(box).toOpaque()
 
             let result = levin_populate_torrents(h, { current, total, message, userdata in
                 guard let userdata else { return }
-                let ctx = userdata.assumingMemoryBound(to: Context.self).pointee
+                let box = Unmanaged<Box>.fromOpaque(userdata).takeUnretainedValue()
                 let msg = message.map { String(cString: $0) } ?? ""
                 DispatchQueue.main.async {
-                    ctx.progress(Int(current), Int(total), msg)
+                    box.fn(Int(current), Int(total), msg)
                 }
-            }, &ctx)
+            }, raw)
+
+            // Release the box now that populate is done
+            Unmanaged<Box>.fromOpaque(raw).release()
 
             DispatchQueue.main.async { completion(Int(result)) }
         }
