@@ -67,6 +67,11 @@ else()
     target_link_libraries(levin PUBLIC torrent-rasterbar)
 endif()
 
+# macOS: FSEvents requires CoreServices framework
+if(APPLE)
+    target_link_libraries(levin PUBLIC "-framework CoreServices")
+endif()
+
 # --- Tests ---
 if(LEVIN_BUILD_TESTS)
     enable_testing()

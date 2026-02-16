@@ -1,0 +1,132 @@
+#!/bin/bash
+# Build Levin.app for macOS
+# Usage: ./build.sh [--stub]
+#
+# Requires: cmake, swiftc, Xcode Command Line Tools
+# For real session (default): also requires boost, openssl (brew install boost openssl)
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BUILD_DIR="$ROOT_DIR/build-macos"
+APP_DIR="$SCRIPT_DIR/Levin.app"
+SRC_DIR="$SCRIPT_DIR/Levin/Sources"
+RES_DIR="$SCRIPT_DIR/Levin/Resources"
+
+USE_STUB=OFF
+BUILD_TYPE=Release
+
+for arg in "$@"; do
+    case "$arg" in
+        --stub) USE_STUB=ON ;;
+        --debug) BUILD_TYPE=Debug ;;
+    esac
+done
+
+echo "==> Building liblevin (stub=$USE_STUB, type=$BUILD_TYPE)"
+cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
+    -DLEVIN_USE_STUB_SESSION="$USE_STUB" \
+    -DLEVIN_BUILD_DAEMON=OFF \
+    -DLEVIN_BUILD_TESTS=OFF \
+    -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+cmake --build "$BUILD_DIR" -j"$(sysctl -n hw.ncpu)"
+
+# Collect all static libraries that need to be linked
+LIBS=("-L$BUILD_DIR/liblevin" "-llevin")
+LIBS+=("-lcurl")
+
+if [ "$USE_STUB" = "OFF" ]; then
+    # Real libtorrent session — link all the static deps
+    LT_BUILD="$BUILD_DIR/_deps/libtorrent-build"
+    DC_BUILD="$BUILD_DIR/_deps/libdatachannel-build"
+
+    LIBS+=("-L$LT_BUILD" "-ltorrent-rasterbar")
+
+    # libdatachannel and its transitive deps
+    for lib in \
+        "$DC_BUILD/libdatachannel-static.a" \
+        "$DC_BUILD/deps/libjuice/libjuice-static.a" \
+        "$DC_BUILD/deps/libsrtp/libsrtp2.a" \
+        "$DC_BUILD/deps/usrsctp/usrsctplib/libusrsctp.a"; do
+        [ -f "$lib" ] && LIBS+=("$lib")
+    done
+
+    # OpenSSL from Homebrew
+    if [ -d "/opt/homebrew/opt/openssl" ]; then
+        LIBS+=("-L/opt/homebrew/opt/openssl/lib")
+    elif [ -d "/usr/local/opt/openssl" ]; then
+        LIBS+=("-L/usr/local/opt/openssl/lib")
+    fi
+    LIBS+=("-lssl" "-lcrypto")
+fi
+
+FRAMEWORKS=(
+    "-framework AppKit"
+    "-framework SwiftUI"
+    "-framework IOKit"
+    "-framework CoreFoundation"
+    "-framework CoreServices"
+    "-framework Security"
+    "-framework SystemConfiguration"
+)
+
+echo "==> Compiling Swift sources"
+SWIFT_FILES=("$SRC_DIR"/*.swift)
+
+SWIFT_FLAGS=(
+    -import-objc-header "$SRC_DIR/Levin-Bridging-Header.h"
+    -I "$ROOT_DIR/liblevin/include"
+    "${LIBS[@]}"
+    "${FRAMEWORKS[@]}"
+    "-lc++"
+)
+
+if [ "$BUILD_TYPE" = "Release" ]; then
+    SWIFT_FLAGS+=(-O)
+else
+    SWIFT_FLAGS+=(-g -Onone)
+fi
+
+# Build for the native architecture
+swiftc \
+    -target "$(uname -m)-apple-macos14.0" \
+    "${SWIFT_FLAGS[@]}" \
+    "${SWIFT_FILES[@]}" \
+    -o "$SCRIPT_DIR/Levin"
+
+echo "==> Creating Levin.app bundle"
+rm -rf "$APP_DIR"
+mkdir -p "$APP_DIR/Contents/MacOS"
+mkdir -p "$APP_DIR/Contents/Resources"
+
+cp "$SCRIPT_DIR/Levin" "$APP_DIR/Contents/MacOS/"
+cp "$RES_DIR/Info.plist" "$APP_DIR/Contents/"
+
+# Generate .icns from AppIcon.png using iconutil (macOS only)
+if [ -f "$RES_DIR/AppIcon.png" ] && command -v iconutil &>/dev/null && command -v sips &>/dev/null; then
+    ICONSET="$SCRIPT_DIR/AppIcon.iconset"
+    mkdir -p "$ICONSET"
+    for size in 16 32 64 128 256 512; do
+        sips -z "$size" "$size" "$RES_DIR/AppIcon.png" --out "$ICONSET/icon_${size}x${size}.png" &>/dev/null
+    done
+    for size in 16 32 128 256; do
+        doubled=$((size * 2))
+        cp "$ICONSET/icon_${doubled}x${doubled}.png" "$ICONSET/icon_${size}x${size}@2x.png" 2>/dev/null || true
+    done
+    cp "$ICONSET/icon_512x512.png" "$ICONSET/icon_256x256@2x.png" 2>/dev/null || true
+    iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/AppIcon.icns"
+    rm -rf "$ICONSET"
+    echo "  Generated AppIcon.icns"
+elif [ -f "$RES_DIR/AppIcon.icns" ]; then
+    cp "$RES_DIR/AppIcon.icns" "$APP_DIR/Contents/Resources/"
+fi
+
+# Copy menu bar icon (template image)
+[ -f "$RES_DIR/MenuBarIcon.png" ] && cp "$RES_DIR/MenuBarIcon.png" "$APP_DIR/Contents/Resources/"
+[ -f "$RES_DIR/MenuBarIcon@2x.png" ] && cp "$RES_DIR/MenuBarIcon@2x.png" "$APP_DIR/Contents/Resources/"
+
+# Clean up intermediate binary
+rm -f "$SCRIPT_DIR/Levin"
+
+echo "==> Done: $APP_DIR"
