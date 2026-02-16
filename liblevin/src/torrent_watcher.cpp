@@ -170,6 +170,13 @@ struct FsEvent {
     bool is_remove;
 };
 
+// Shared state between the FSEvents callback and TorrentWatcher.
+// Defined at namespace scope so the free callback function can access it.
+struct FsWatcherState {
+    std::mutex mu;
+    std::vector<FsEvent> pending;
+};
+
 struct TorrentWatcher::Impl {
     std::string directory;
     TorrentAddedCallback on_add;
@@ -178,8 +185,7 @@ struct TorrentWatcher::Impl {
     FSEventStreamRef stream = nullptr;
     dispatch_queue_t queue = nullptr;
 
-    std::mutex mu;
-    std::vector<FsEvent> pending;
+    FsWatcherState shared;
 };
 
 // FSEvents callback — runs on the dispatch queue, NOT the tick thread.
@@ -190,10 +196,10 @@ static void fsevents_callback(
         void* event_paths,
         const FSEventStreamEventFlags flags[],
         const FSEventStreamEventId /*ids*/[]) {
-    auto* impl = static_cast<TorrentWatcher::Impl*>(context);
+    auto* state = static_cast<FsWatcherState*>(context);
     auto** paths = static_cast<char**>(event_paths);
 
-    std::lock_guard<std::mutex> lock(impl->mu);
+    std::lock_guard<std::mutex> lock(state->mu);
     for (size_t i = 0; i < count; ++i) {
         std::string p(paths[i]);
         if (!has_torrent_extension(p)) continue;
@@ -204,13 +210,13 @@ static void fsevents_callback(
         bool modified = (flags[i] & kFSEventStreamEventFlagItemModified) != 0;
 
         if (removed) {
-            impl->pending.push_back({std::move(p), true});
+            state->pending.push_back({std::move(p), true});
         } else if (created || renamed || modified) {
             // Check that the file actually exists (renames can mean source or dest)
             namespace fs = std::filesystem;
             std::error_code ec;
             if (fs::exists(p, ec) && fs::is_regular_file(p, ec)) {
-                impl->pending.push_back({std::move(p), false});
+                state->pending.push_back({std::move(p), false});
             }
         }
     }
@@ -241,7 +247,7 @@ int TorrentWatcher::start(const std::string& directory) {
     if (!paths) return -1;
 
     FSEventStreamContext ctx{};
-    ctx.info = impl_.get();
+    ctx.info = &impl_->shared;
 
     impl_->stream = FSEventStreamCreate(
         kCFAllocatorDefault,
@@ -279,8 +285,8 @@ void TorrentWatcher::poll() {
     // Drain pending events accumulated by the FSEvents callback.
     std::vector<FsEvent> events;
     {
-        std::lock_guard<std::mutex> lock(impl_->mu);
-        events.swap(impl_->pending);
+        std::lock_guard<std::mutex> lock(impl_->shared.mu);
+        events.swap(impl_->shared.pending);
     }
 
     for (const auto& ev : events) {
