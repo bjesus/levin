@@ -61,25 +61,23 @@ if [ "$USE_STUB" = "OFF" ]; then
     LIBS+=("-lssl" "-lcrypto")
 fi
 
-FRAMEWORKS=(
-    "-framework AppKit"
-    "-framework SwiftUI"
-    "-framework IOKit"
-    "-framework CoreFoundation"
-    "-framework CoreServices"
-    "-framework Security"
-    "-framework SystemConfiguration"
-)
-
 echo "==> Compiling Swift sources"
 SWIFT_FILES=("$SRC_DIR"/*.swift)
+
+# swiftc needs linker flags passed via -Xlinker
+LINKER_FLAGS=()
+for lib in "${LIBS[@]}"; do
+    LINKER_FLAGS+=(-Xlinker "$lib")
+done
+for fw in AppKit SwiftUI IOKit CoreFoundation CoreServices Security SystemConfiguration; do
+    LINKER_FLAGS+=(-Xlinker -framework -Xlinker "$fw")
+done
+LINKER_FLAGS+=(-Xlinker -lc++)
 
 SWIFT_FLAGS=(
     -import-objc-header "$SRC_DIR/Levin-Bridging-Header.h"
     -I "$ROOT_DIR/liblevin/include"
-    "${LIBS[@]}"
-    "${FRAMEWORKS[@]}"
-    "-lc++"
+    "${LINKER_FLAGS[@]}"
 )
 
 if [ "$BUILD_TYPE" = "Release" ]; then
