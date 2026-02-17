@@ -19,7 +19,7 @@ Download the `.deb` package or the standalone binary from the [releases page](ht
 
 ```sh
 # Debian/Ubuntu
-sudo dpkg -i levin_0.0.2_amd64.deb
+sudo dpkg -i levin_0.0.3_amd64.deb
 
 # Or just copy the binary
 chmod +x levin-linux-x86_64
