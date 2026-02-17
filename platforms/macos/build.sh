@@ -25,11 +25,24 @@ for arg in "$@"; do
 done
 
 echo "==> Building liblevin (stub=$USE_STUB, type=$BUILD_TYPE)"
-cmake -S "$ROOT_DIR" -B "$BUILD_DIR" \
-    -DLEVIN_USE_STUB_SESSION="$USE_STUB" \
-    -DLEVIN_BUILD_DAEMON=OFF \
-    -DLEVIN_BUILD_TESTS=OFF \
+
+CMAKE_ARGS=(
+    -S "$ROOT_DIR" -B "$BUILD_DIR"
+    -DLEVIN_USE_STUB_SESSION="$USE_STUB"
+    -DLEVIN_BUILD_DAEMON=OFF
+    -DLEVIN_BUILD_TESTS=OFF
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
+)
+
+# Homebrew OpenSSL is keg-only — pass the root dir so CMake can find it
+if [ "$USE_STUB" = "OFF" ]; then
+    OPENSSL_PREFIX="$(brew --prefix openssl 2>/dev/null || true)"
+    if [ -n "$OPENSSL_PREFIX" ]; then
+        CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$OPENSSL_PREFIX")
+    fi
+fi
+
+cmake "${CMAKE_ARGS[@]}"
 cmake --build "$BUILD_DIR" -j"$(sysctl -n hw.ncpu)"
 
 # Collect all static libraries that need to be linked

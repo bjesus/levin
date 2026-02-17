@@ -94,9 +94,9 @@ jobs:
           key: macos-lt-src-${{ hashFiles('liblevin/CMakeLists.txt') }}
           restore-keys: macos-lt-src-
 
-      - name: Build app (stub session)
+      - name: Build app
         working-directory: platforms/macos
-        run: ./build.sh --stub
+        run: ./build.sh
 
       - name: Verify binary
         run: |
