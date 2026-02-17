@@ -69,7 +69,7 @@ LINKER_FLAGS=()
 for lib in "${LIBS[@]}"; do
     LINKER_FLAGS+=(-Xlinker "$lib")
 done
-for fw in AppKit SwiftUI IOKit CoreFoundation CoreServices Security SystemConfiguration; do
+for fw in AppKit SwiftUI IOKit CoreFoundation CoreServices Security SystemConfiguration Network; do
     LINKER_FLAGS+=(-Xlinker -framework -Xlinker "$fw")
 done
 LINKER_FLAGS+=(-Xlinker -lc++)

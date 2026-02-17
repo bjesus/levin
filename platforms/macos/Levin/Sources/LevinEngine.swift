@@ -29,6 +29,7 @@ final class LevinEngine: ObservableObject {
     private var timer: DispatchSourceTimer?
     private var powerMonitor: PowerMonitor?
     private var storageMonitor: StorageMonitor?
+    private var networkMonitor: NetworkMonitor?
 
     // MARK: - Directories
 
@@ -230,6 +231,8 @@ final class LevinEngine: ObservableObject {
         powerMonitor = nil
         storageMonitor?.stop()
         storageMonitor = nil
+        networkMonitor?.stop()
+        networkMonitor = nil
 
         if let h = handle {
             levin_stop(h)
@@ -282,6 +285,13 @@ final class LevinEngine: ObservableObject {
             }
         }
         storageMonitor?.start(on: queue)
+
+        networkMonitor = NetworkMonitor { [weak self] hasWifi, hasCellular in
+            self?.queue.async {
+                levin_update_network(h, hasWifi ? 1 : 0, hasCellular ? 1 : 0)
+            }
+        }
+        networkMonitor?.start(on: queue)
     }
 
     private func stateString(_ state: levin_state_t) -> String {
