@@ -125,6 +125,10 @@ fi
 [ -f "$RES_DIR/MenuBarIcon.png" ] && cp "$RES_DIR/MenuBarIcon.png" "$APP_DIR/Contents/Resources/"
 [ -f "$RES_DIR/MenuBarIcon@2x.png" ] && cp "$RES_DIR/MenuBarIcon@2x.png" "$APP_DIR/Contents/Resources/"
 
+# Ad-hoc code sign (required on Apple Silicon)
+echo "==> Code signing (ad-hoc)"
+codesign --force --deep -s - "$APP_DIR"
+
 # Clean up intermediate binary
 rm -f "$BINARY"
 

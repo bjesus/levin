@@ -98,20 +98,27 @@ jobs:
         working-directory: platforms/macos
         run: ./build.sh --stub
 
+      - name: Verify binary
+        run: |
+          file platforms/macos/Levin.app/Contents/MacOS/Levin
+          codesign -dv platforms/macos/Levin.app 2>&1 || true
+
+      - name: Create zip (preserves permissions)
+        working-directory: platforms/macos
+        run: ditto -c -k --keepParent Levin.app Levin.zip
+
       - name: Upload app
         uses: actions/upload-artifact@v4
         with:
           name: levin-macos
-          path: platforms/macos/Levin.app
+          path: platforms/macos/Levin.zip
 
       - name: Attach to release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd platforms/macos
-          zip -r ../../levin-macos.zip Levin.app
-          cd ../..
+          cp platforms/macos/Levin.zip levin-macos.zip
           gh release upload "${{ github.event.release.tag_name }}" levin-macos.zip
 
   android:
