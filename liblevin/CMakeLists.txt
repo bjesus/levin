@@ -15,6 +15,20 @@ endif()
 
 # --- libtorrent (when not using stub) ---
 if(NOT LEVIN_USE_STUB_SESSION)
+    # On macOS, Homebrew OpenSSL is keg-only; help CMake find it
+    if(APPLE AND NOT OPENSSL_ROOT_DIR)
+        execute_process(
+            COMMAND brew --prefix openssl
+            OUTPUT_VARIABLE _brew_openssl
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE _brew_rc
+        )
+        if(_brew_rc EQUAL 0 AND _brew_openssl)
+            set(OPENSSL_ROOT_DIR "${_brew_openssl}" CACHE PATH "Homebrew OpenSSL")
+        endif()
+    endif()
+
     find_package(Boost REQUIRED)
     find_package(OpenSSL REQUIRED)
 
@@ -26,6 +40,8 @@ if(NOT LEVIN_USE_STUB_SESSION)
     )
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+    set(NO_TESTS ON CACHE BOOL "Skip libdatachannel tests" FORCE)
+    set(NO_EXAMPLES ON CACHE BOOL "Skip libdatachannel examples" FORCE)
     set(webtorrent ON CACHE BOOL "Enable WebTorrent/WebRTC via libdatachannel" FORCE)
     set(deprecated-functions OFF CACHE BOOL "" FORCE)
     FetchContent_MakeAvailable(libtorrent)
@@ -65,6 +81,11 @@ if(LEVIN_USE_STUB_SESSION)
     target_compile_definitions(levin PUBLIC LEVIN_USE_STUB_SESSION)
 else()
     target_link_libraries(levin PUBLIC torrent-rasterbar)
+endif()
+
+# macOS: FSEvents requires CoreServices framework
+if(APPLE)
+    target_link_libraries(levin PUBLIC "-framework CoreServices")
 endif()
 
 # --- Tests ---

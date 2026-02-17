@@ -77,6 +77,50 @@ jobs:
           cp build/platforms/linux/levin levin-linux-x86_64
           gh release upload "${{ github.event.release.tag_name }}" levin-linux-x86_64 levin_0.0.2_amd64.deb
 
+  macos:
+    name: macOS
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install cmake boost openssl
+
+      - name: Cache libtorrent source
+        uses: actions/cache@v4
+        with:
+          path: build-macos/_deps/*-src
+          key: macos-lt-src-${{ hashFiles('liblevin/CMakeLists.txt') }}
+          restore-keys: macos-lt-src-
+
+      - name: Build app
+        working-directory: platforms/macos
+        run: ./build.sh
+
+      - name: Verify binary
+        run: |
+          file platforms/macos/Levin.app/Contents/MacOS/Levin
+          codesign -dv platforms/macos/Levin.app 2>&1 || true
+
+      - name: Create zip (preserves permissions)
+        working-directory: platforms/macos
+        run: ditto -c -k --keepParent Levin.app Levin.zip
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-macos
+          path: platforms/macos/Levin.zip
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp platforms/macos/Levin.zip levin-macos.zip
+          gh release upload "${{ github.event.release.tag_name }}" levin-macos.zip
+
   android:
     name: Android
     runs-on: ubuntu-24.04

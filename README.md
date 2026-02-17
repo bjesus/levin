@@ -32,7 +32,17 @@ If you installed the `.deb`, a systemd user service is included:
 systemctl --user enable --now levin
 ```
 
-### Usage
+## macOS
+
+Install via Homebrew:
+
+```sh
+brew install bjesus/levin/levin
+```
+
+Or download `levin-macos.zip` from the [releases page](https://github.com/bjesus/levin/releases), unzip, and move `Levin.app` to your Applications folder. On first launch, right-click the app and select "Open" to bypass Gatekeeper (one-time only).
+
+## Usage
 
 ```
 levin start      Start the daemon
