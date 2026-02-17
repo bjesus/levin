@@ -57,7 +57,7 @@ public:
         sp.set_str(lt::settings_pack::listen_interfaces,
                    "0.0.0.0:" + std::to_string(port_));
         sp.set_bool(lt::settings_pack::enable_dht, true);
-        sp.set_bool(lt::settings_pack::enable_lsd, true);
+        sp.set_bool(lt::settings_pack::enable_lsd, false);
         sp.set_bool(lt::settings_pack::enable_upnp, true);
         sp.set_bool(lt::settings_pack::enable_natpmp, true);
         sp.set_int(lt::settings_pack::connections_limit, 200);
