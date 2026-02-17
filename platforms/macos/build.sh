@@ -50,19 +50,19 @@ LIBS=("-L$BUILD_DIR/liblevin" "-llevin")
 LIBS+=("-lcurl")
 
 if [ "$USE_STUB" = "OFF" ]; then
-    # Real libtorrent session — link all the static deps
+    # Real libtorrent session — link all the static deps.
+    # libdatachannel is fetched as a libtorrent subdep, so its build
+    # artifacts live inside libtorrent-build/deps/, not at top-level _deps/.
     LT_BUILD="$BUILD_DIR/_deps/libtorrent-build"
-    DC_BUILD="$BUILD_DIR/_deps/libdatachannel-build"
 
     LIBS+=("-L$LT_BUILD" "-ltorrent-rasterbar")
 
-    # libdatachannel and its transitive deps
-    for lib in \
-        "$DC_BUILD/libdatachannel-static.a" \
-        "$DC_BUILD/deps/libjuice/libjuice-static.a" \
-        "$DC_BUILD/deps/libsrtp/libsrtp2.a" \
-        "$DC_BUILD/deps/usrsctp/usrsctplib/libusrsctp.a"; do
-        [ -f "$lib" ] && LIBS+=("$lib")
+    # Find all static libraries from libdatachannel and its transitive deps
+    for lib in datachannel-static juice-static srtp2 usrsctp; do
+        found=$(find "$BUILD_DIR" -name "lib${lib}.a" -print -quit 2>/dev/null)
+        if [ -n "$found" ]; then
+            LIBS+=("$found")
+        fi
     done
 
     # OpenSSL from Homebrew
@@ -74,6 +74,7 @@ if [ "$USE_STUB" = "OFF" ]; then
     LIBS+=("-lssl" "-lcrypto")
 fi
 
+echo "==> Libraries to link: ${LIBS[*]}"
 echo "==> Compiling Swift sources"
 SWIFT_FILES=("$SRC_DIR"/*.swift)
 
