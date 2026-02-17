@@ -29,7 +29,7 @@ if(NOT LEVIN_USE_STUB_SESSION)
         endif()
     endif()
 
-    find_package(Boost REQUIRED COMPONENTS system)
+    find_package(Boost REQUIRED)
     find_package(OpenSSL REQUIRED)
 
     FetchContent_Declare(
