@@ -1,13 +1,13 @@
-# Maintainer: Levin Contributors <levin@annas-archive.org>
+# Maintainer: Yoav Moshe <levin@yoavmoshe.com>
 pkgname=levin
-pkgver=0.0.1
+pkgver=0.0.2
 pkgrel=1
 pkgdesc="Background torrent seeding client for Anna's Archive"
 arch=('x86_64')
-url="https://annas-archive.org"
+url="https://github.com/bjesus/levin"
 license=('MIT')
 depends=('curl' 'openssl')
-makedepends=('cmake' 'gcc')
+makedepends=('cmake' 'gcc' 'boost')
 source=("${pkgname}-${pkgver}.tar.gz")
 sha256sums=('SKIP')
 

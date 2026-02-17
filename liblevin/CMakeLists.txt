@@ -15,7 +15,7 @@ endif()
 
 # --- libtorrent (when not using stub) ---
 if(NOT LEVIN_USE_STUB_SESSION)
-    find_package(Boost REQUIRED COMPONENTS system)
+    find_package(Boost REQUIRED)
     find_package(OpenSSL REQUIRED)
 
     FetchContent_Declare(
