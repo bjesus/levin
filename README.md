@@ -25,6 +25,16 @@ If you installed the `.deb`, a systemd user service is included:
 systemctl --user enable --now levin
 ```
 
+### macOS
+
+Install via Homebrew:
+
+```sh
+brew install bjesus/levin/levin
+```
+
+Or download `levin-macos.zip` from the [releases page](https://github.com/bjesus/levin/releases), unzip, and move `Levin.app` to your Applications folder.
+
 ### Android
 
 Download the APK from the [releases page](https://github.com/bjesus/levin/releases) and install it. On first launch, the app will offer to fetch torrent files from Anna's Archive.
