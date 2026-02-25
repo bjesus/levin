@@ -140,7 +140,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          vcpkg install curl boost-system boost-asio openssl
+          vcpkg install curl boost openssl
 
       - name: Cache libtorrent source
         uses: actions/cache@v4
