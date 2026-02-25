@@ -125,16 +125,22 @@ jobs:
     name: Windows
     runs-on: windows-latest
 
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
         with:
-          vcpkgGitCommitId: 'a7b6122f6b6504d16d96117336a0562693579933'
+          path: C:/vcpkg/installed
+          key: vcpkg-win-static-${{ hashFiles('.github/workflows/build.yml') }}
+          restore-keys: vcpkg-win-static-
 
       - name: Install dependencies
-        run: vcpkg install curl boost-system boost-asio openssl --triplet x64-windows-static
+        run: |
+          vcpkg install curl boost-system boost-asio openssl
 
       - name: Cache libtorrent source
         uses: actions/cache@v4
@@ -149,7 +155,7 @@ jobs:
           -DLEVIN_USE_STUB_SESSION=OFF
           -DLEVIN_BUILD_TESTS=OFF
           -DCMAKE_BUILD_TYPE=Release
-          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+          "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
           -DVCPKG_TARGET_TRIPLET=x64-windows-static
           -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
 
