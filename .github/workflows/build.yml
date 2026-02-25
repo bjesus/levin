@@ -121,6 +121,55 @@ jobs:
           cp platforms/macos/Levin.zip levin-macos.zip
           gh release upload "${{ github.event.release.tag_name }}" levin-macos.zip
 
+  windows:
+    name: Windows
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'a7b6122f6b6504d16d96117336a0562693579933'
+
+      - name: Install dependencies
+        run: vcpkg install curl boost-system boost-asio openssl --triplet x64-windows-static
+
+      - name: Cache libtorrent source
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/*-src
+          key: windows-lt-src-${{ hashFiles('liblevin/CMakeLists.txt') }}
+          restore-keys: windows-lt-src-
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DLEVIN_USE_STUB_SESSION=OFF
+          -DLEVIN_BUILD_TESTS=OFF
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_TOOLCHAIN_FILE=${{ env.VCPKG_ROOT }}/scripts/buildsystems/vcpkg.cmake
+          -DVCPKG_TARGET_TRIPLET=x64-windows-static
+          -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: levin-windows-x86_64
+          path: build/platforms/windows/Release/levin.exe
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          copy build\platforms\windows\Release\levin.exe levin-windows-x86_64.exe
+          gh release upload "${{ github.event.release.tag_name }}" levin-windows-x86_64.exe
+
   android:
     name: Android
     runs-on: ubuntu-24.04
