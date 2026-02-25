@@ -15,6 +15,8 @@
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <sys/stat.h>
+#elif defined(_WIN32)
+#include <windows.h>
 #endif
 
 #include "levin_log.h"
@@ -126,6 +128,14 @@ static DiskScan calculate_disk_usage(const std::string& data_dir) {
                 uint64_t size = static_cast<uint64_t>(st.st_blocks) * 512;
                 result.usage += size;
                 if (st.st_size > 0) result.file_count++;
+            }
+#elif defined(_WIN32)
+            DWORD high = 0;
+            DWORD low = GetCompressedFileSizeW(entry.path().wstring().c_str(), &high);
+            if (low != INVALID_FILE_SIZE || GetLastError() == NO_ERROR) {
+                uint64_t size = (static_cast<uint64_t>(high) << 32) | low;
+                result.usage += size;
+                if (size > 0) result.file_count++;
             }
 #else
             auto sz = entry.file_size(ec);
@@ -257,7 +267,7 @@ int levin_start(levin_t* ctx) {
             // (the remove_torrent API expects an info_hash, but the watcher
             // only knows the file path; for now we pass the path and the
             // session can look it up)
-            auto pos = path.find_last_of('/');
+            auto pos = path.find_last_of("/\\");
             std::string name = (pos != std::string::npos) ? path.substr(pos + 1) : path;
             (void)name;
             // Note: remove_torrent requires an info_hash which we don't have
@@ -400,7 +410,11 @@ levin_torrent_t* levin_get_torrents(levin_t* ctx, int* count) {
         // Copy info_hash (truncate/pad to 40 chars)
         std::memset(list[i].info_hash, 0, sizeof(list[i].info_hash));
         std::strncpy(list[i].info_hash, t.info_hash.c_str(), 40);
+#ifdef _MSC_VER
+        list[i].name = _strdup(t.name.c_str());
+#else
         list[i].name = strdup(t.name.c_str());
+#endif
         list[i].size = t.size;
         list[i].downloaded = t.downloaded;
         list[i].uploaded = t.uploaded;

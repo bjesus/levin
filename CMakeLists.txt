@@ -16,6 +16,10 @@ endif()
 
 add_subdirectory(liblevin)
 
-if(LEVIN_BUILD_DAEMON AND NOT ANDROID AND NOT APPLE)
+if(LEVIN_BUILD_DAEMON AND NOT ANDROID AND NOT APPLE AND NOT WIN32)
     add_subdirectory(platforms/linux)
+endif()
+
+if(WIN32)
+    add_subdirectory(platforms/windows)
 endif()

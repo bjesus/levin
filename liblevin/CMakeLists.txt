@@ -75,6 +75,11 @@ add_library(levin STATIC ${LIBLEVIN_SOURCES})
 target_include_directories(levin PUBLIC include)
 target_compile_features(levin PUBLIC cxx_std_17)
 
+# MSVC: suppress deprecation warnings for fopen/strdup/etc.
+if(MSVC)
+    target_compile_definitions(levin PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
 target_link_libraries(levin PUBLIC CURL::libcurl)
 
 if(LEVIN_USE_STUB_SESSION)

@@ -15,6 +15,9 @@
 #include <CoreServices/CoreServices.h>
 #include <dispatch/dispatch.h>
 #include <mutex>
+#elif defined(_WIN32)
+#include <windows.h>
+#include <mutex>
 #endif
 
 
@@ -31,7 +34,7 @@ bool has_torrent_extension(const std::string& path) {
 
 // Extract filename from a full path
 std::string filename_from_path(const std::string& path) {
-    auto pos = path.find_last_of('/');
+    auto pos = path.find_last_of("/\\");
     if (pos == std::string::npos) return path;
     return path.substr(pos + 1);
 }
@@ -296,6 +299,155 @@ void TorrentWatcher::poll() {
             if (impl_->on_add) impl_->on_add(ev.path);
         }
     }
+}
+
+void TorrentWatcher::scan_existing() {
+    if (impl_->directory.empty()) return;
+
+    namespace fs = std::filesystem;
+    std::error_code ec;
+
+    std::vector<std::string> paths;
+    for (const auto& entry : fs::directory_iterator(impl_->directory, ec)) {
+        if (ec) break;
+        if (entry.is_regular_file() && has_torrent_extension(entry.path().string())) {
+            paths.push_back(entry.path().string());
+        }
+    }
+
+    std::sort(paths.begin(), paths.end());
+
+    for (const auto& path : paths) {
+        if (impl_->on_add) {
+            impl_->on_add(path);
+        }
+    }
+}
+
+#elif defined(_WIN32) // Windows: ReadDirectoryChangesW
+
+struct WinFsEvent {
+    std::string path;
+    bool is_remove;
+};
+
+struct TorrentWatcher::Impl {
+    std::string directory;
+    TorrentAddedCallback on_add;
+    TorrentRemovedCallback on_remove;
+
+    HANDLE dir_handle = INVALID_HANDLE_VALUE;
+    OVERLAPPED overlapped{};
+    alignas(DWORD) char buffer[4096]{};
+    bool pending_read = false;
+
+    std::mutex mu;
+    std::vector<WinFsEvent> pending_events;
+};
+
+TorrentWatcher::TorrentWatcher() : impl_(std::make_unique<Impl>()) {}
+
+TorrentWatcher::~TorrentWatcher() {
+    stop();
+}
+
+void TorrentWatcher::set_callbacks(TorrentAddedCallback on_add, TorrentRemovedCallback on_remove) {
+    impl_->on_add = std::move(on_add);
+    impl_->on_remove = std::move(on_remove);
+}
+
+static void issue_read(TorrentWatcher::Impl* impl) {
+    memset(&impl->overlapped, 0, sizeof(impl->overlapped));
+    BOOL ok = ReadDirectoryChangesW(
+        impl->dir_handle,
+        impl->buffer,
+        sizeof(impl->buffer),
+        FALSE, // don't watch subtree
+        FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE,
+        nullptr,
+        &impl->overlapped,
+        nullptr);
+    impl->pending_read = (ok != FALSE);
+}
+
+int TorrentWatcher::start(const std::string& directory) {
+    stop();
+    impl_->directory = directory;
+
+    // Open directory handle for overlapped ReadDirectoryChangesW
+    std::wstring wdir(directory.begin(), directory.end());
+    impl_->dir_handle = CreateFileW(
+        wdir.c_str(),
+        FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr,
+        OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
+        nullptr);
+
+    if (impl_->dir_handle == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    issue_read(impl_.get());
+    return 0;
+}
+
+void TorrentWatcher::stop() {
+    if (impl_->dir_handle != INVALID_HANDLE_VALUE) {
+        CancelIo(impl_->dir_handle);
+        CloseHandle(impl_->dir_handle);
+        impl_->dir_handle = INVALID_HANDLE_VALUE;
+        impl_->pending_read = false;
+    }
+}
+
+void TorrentWatcher::poll() {
+    if (impl_->dir_handle == INVALID_HANDLE_VALUE || !impl_->pending_read) return;
+
+    DWORD bytes_returned = 0;
+    BOOL result = GetOverlappedResult(impl_->dir_handle, &impl_->overlapped,
+                                       &bytes_returned, FALSE);
+    if (!result) {
+        if (GetLastError() == ERROR_IO_INCOMPLETE) return; // not ready yet
+        // Error — try to re-issue
+        issue_read(impl_.get());
+        return;
+    }
+
+    if (bytes_returned > 0) {
+        const char* ptr = impl_->buffer;
+        for (;;) {
+            const auto* info = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(ptr);
+            // Convert wide filename to UTF-8
+            int name_chars = info->FileNameLength / sizeof(WCHAR);
+            std::wstring wname(info->FileName, name_chars);
+            int utf8_len = WideCharToMultiByte(CP_UTF8, 0, wname.c_str(), name_chars,
+                                                nullptr, 0, nullptr, nullptr);
+            std::string name(utf8_len, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, wname.c_str(), name_chars,
+                                &name[0], utf8_len, nullptr, nullptr);
+
+            if (has_torrent_extension(name)) {
+                std::string full_path = impl_->directory + "\\" + name;
+
+                if (info->Action == FILE_ACTION_ADDED ||
+                    info->Action == FILE_ACTION_RENAMED_NEW_NAME ||
+                    info->Action == FILE_ACTION_MODIFIED) {
+                    if (impl_->on_add) impl_->on_add(full_path);
+                } else if (info->Action == FILE_ACTION_REMOVED ||
+                           info->Action == FILE_ACTION_RENAMED_OLD_NAME) {
+                    if (impl_->on_remove) impl_->on_remove(full_path);
+                }
+            }
+
+            if (info->NextEntryOffset == 0) break;
+            ptr += info->NextEntryOffset;
+        }
+    }
+
+    // Re-issue the read for next poll
+    issue_read(impl_.get());
 }
 
 void TorrentWatcher::scan_existing() {
