@@ -1,0 +1,112 @@
+#include <windows.h>
+#include "resource.h"
+
+// Icon
+IDI_LEVIN       ICON "levin.ico"
+IDI_LEVIN_SMALL ICON "levin.ico"
+
+// Version info
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION     0,0,3,0
+PRODUCTVERSION  0,0,3,0
+FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+FILEFLAGS       0
+FILEOS          VOS_NT_WINDOWS32
+FILETYPE        VFT_APP
+FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName",      "Yoav Moshe"
+            VALUE "FileDescription",  "Levin - Background torrent seeding for Anna's Archive"
+            VALUE "FileVersion",      "0.0.3"
+            VALUE "InternalName",     "levin"
+            VALUE "LegalCopyright",   "Copyright 2025 Yoav Moshe"
+            VALUE "OriginalFilename", "levin.exe"
+            VALUE "ProductName",      "Levin"
+            VALUE "ProductVersion",   "0.0.3"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1252
+    END
+END
+
+// Stats dialog
+IDD_STATS DIALOGEX 0, 0, 220, 280
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Levin"
+FONT 9, "Segoe UI"
+BEGIN
+    AUTOCHECKBOX    "Enable seeding", IDC_ENABLE_CHECK, 10, 10, 200, 12
+
+    LTEXT           "State:", -1, 10, 30, 50, 10
+    LTEXT           "--", IDC_STATE_TEXT, 65, 30, 145, 10
+
+    GROUPBOX        "Transfer", -1, 10, 48, 200, 60
+    LTEXT           "Download:", -1, 18, 62, 55, 10
+    RTEXT           "0 B/s", IDC_DL_RATE, 75, 62, 60, 10
+    LTEXT           "Total:", -1, 145, 62, 25, 10
+    RTEXT           "0 B", IDC_DL_TOTAL, 170, 62, 35, 10
+    LTEXT           "Upload:", -1, 18, 76, 55, 10
+    RTEXT           "0 B/s", IDC_UL_RATE, 75, 76, 60, 10
+    LTEXT           "Total:", -1, 145, 76, 25, 10
+    RTEXT           "0 B", IDC_UL_TOTAL, 170, 76, 35, 10
+    LTEXT           "Peers:", -1, 18, 90, 55, 10
+    RTEXT           "0", IDC_PEERS, 75, 90, 60, 10
+
+    GROUPBOX        "Content", -1, 10, 114, 200, 40
+    LTEXT           "Torrents:", -1, 18, 128, 55, 10
+    RTEXT           "0", IDC_TORRENTS, 75, 128, 60, 10
+    LTEXT           "Books:", -1, 18, 140, 55, 10
+    RTEXT           "0", IDC_BOOKS, 75, 140, 60, 10
+
+    GROUPBOX        "Storage", -1, 10, 160, 200, 40
+    LTEXT           "Usage:", -1, 18, 174, 55, 10
+    RTEXT           "0 B", IDC_DISK_USAGE, 75, 174, 60, 10
+    LTEXT           "Budget:", -1, 145, 174, 30, 10
+    RTEXT           "0 B", IDC_DISK_BUDGET, 175, 174, 30, 10
+
+    PUSHBUTTON      "Populate Torrents...", IDC_POPULATE_BTN, 10, 210, 90, 18
+    PUSHBUTTON      "Settings...", IDC_SETTINGS_BTN, 108, 210, 50, 18
+    PUSHBUTTON      "Quit", IDC_QUIT_BTN, 166, 210, 44, 18
+END
+
+// Settings dialog
+IDD_SETTINGS DIALOGEX 0, 0, 220, 200
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Levin Settings"
+FONT 9, "Segoe UI"
+BEGIN
+    GROUPBOX        "General", -1, 10, 8, 200, 48
+    AUTOCHECKBOX    "Run on battery power", IDC_BATTERY_CHECK, 18, 22, 180, 12
+    AUTOCHECKBOX    "Run at startup", IDC_STARTUP_CHECK, 18, 38, 180, 12
+
+    GROUPBOX        "Bandwidth (KB/s, 0 = unlimited)", -1, 10, 62, 200, 42
+    LTEXT           "Max download:", -1, 18, 78, 60, 10
+    EDITTEXT        IDC_DL_LIMIT, 80, 76, 40, 14, ES_NUMBER
+    LTEXT           "Max upload:", -1, 130, 78, 50, 10
+    EDITTEXT        IDC_UL_LIMIT, 182, 76, 24, 14, ES_NUMBER
+
+    GROUPBOX        "Storage (GB, 0 = unlimited)", -1, 10, 110, 200, 42
+    LTEXT           "Min free space:", -1, 18, 126, 60, 10
+    EDITTEXT        IDC_MIN_FREE, 80, 124, 40, 14, ES_AUTOHSCROLL
+    LTEXT           "Max storage:", -1, 130, 126, 50, 10
+    EDITTEXT        IDC_MAX_STORAGE, 182, 124, 24, 14, ES_AUTOHSCROLL
+
+    DEFPUSHBUTTON   "OK", IDOK, 108, 162, 50, 18
+    PUSHBUTTON      "Cancel", IDCANCEL, 166, 162, 44, 18
+END
+
+// Populate progress dialog
+IDD_POPULATE DIALOGEX 0, 0, 250, 60
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION
+CAPTION "Populating Torrents"
+FONT 9, "Segoe UI"
+BEGIN
+    CONTROL         "", IDC_POPULATE_PROG, PROGRESS_CLASS, 0, 10, 10, 230, 14
+    LTEXT           "Fetching torrent list...", IDC_POPULATE_TEXT, 10, 32, 230, 14
+END
