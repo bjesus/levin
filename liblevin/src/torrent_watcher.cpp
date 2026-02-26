@@ -343,6 +343,20 @@ struct TorrentWatcher::Impl {
 
     std::mutex mu;
     std::vector<WinFsEvent> pending_events;
+
+    void issue_read() {
+        memset(&overlapped, 0, sizeof(overlapped));
+        BOOL ok = ReadDirectoryChangesW(
+            dir_handle,
+            buffer,
+            sizeof(buffer),
+            FALSE, // don't watch subtree
+            FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE,
+            nullptr,
+            &overlapped,
+            nullptr);
+        pending_read = (ok != FALSE);
+    }
 };
 
 TorrentWatcher::TorrentWatcher() : impl_(std::make_unique<Impl>()) {}
@@ -354,20 +368,6 @@ TorrentWatcher::~TorrentWatcher() {
 void TorrentWatcher::set_callbacks(TorrentAddedCallback on_add, TorrentRemovedCallback on_remove) {
     impl_->on_add = std::move(on_add);
     impl_->on_remove = std::move(on_remove);
-}
-
-static void issue_read(TorrentWatcher::Impl* impl) {
-    memset(&impl->overlapped, 0, sizeof(impl->overlapped));
-    BOOL ok = ReadDirectoryChangesW(
-        impl->dir_handle,
-        impl->buffer,
-        sizeof(impl->buffer),
-        FALSE, // don't watch subtree
-        FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_LAST_WRITE,
-        nullptr,
-        &impl->overlapped,
-        nullptr);
-    impl->pending_read = (ok != FALSE);
 }
 
 int TorrentWatcher::start(const std::string& directory) {
@@ -389,7 +389,7 @@ int TorrentWatcher::start(const std::string& directory) {
         return -1;
     }
 
-    issue_read(impl_.get());
+    impl_->issue_read();
     return 0;
 }
 
@@ -411,7 +411,7 @@ void TorrentWatcher::poll() {
     if (!result) {
         if (GetLastError() == ERROR_IO_INCOMPLETE) return; // not ready yet
         // Error — try to re-issue
-        issue_read(impl_.get());
+        impl_->issue_read();
         return;
     }
 
@@ -447,7 +447,7 @@ void TorrentWatcher::poll() {
     }
 
     // Re-issue the read for next poll
-    issue_read(impl_.get());
+    impl_->issue_read();
 }
 
 void TorrentWatcher::scan_existing() {
