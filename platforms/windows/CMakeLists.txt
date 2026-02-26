@@ -18,6 +18,7 @@ target_link_libraries(levin-win PRIVATE
     ole32
     iphlpapi
     advapi32
+    ws2_32
 )
 
 target_include_directories(levin-win PRIVATE
@@ -29,6 +30,7 @@ target_compile_definitions(levin-win PRIVATE
     UNICODE
     _UNICODE
     _CRT_SECURE_NO_WARNINGS
+    _WIN32_WINNT=0x0600
 )
 
 set_target_properties(levin-win PROPERTIES OUTPUT_NAME levin)

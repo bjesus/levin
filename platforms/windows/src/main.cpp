@@ -4,11 +4,18 @@
 #ifndef _UNICODE
 #define _UNICODE
 #endif
+// Require Vista+ for IP Helper v2 (GetIfTable2, NotifyIpInterfaceChange)
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+#endif
 
+#include <winsock2.h>
 #include <windows.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+#include <netioapi.h>
 #include <commctrl.h>
 #include <shellapi.h>
-#include <iphlpapi.h>
 #include <cstdio>
 #include <string>
 #include <fstream>
