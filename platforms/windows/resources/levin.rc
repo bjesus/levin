@@ -107,6 +107,6 @@ STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION
 CAPTION "Populating Torrents"
 FONT 9, "Segoe UI"
 BEGIN
-    CONTROL         "", IDC_POPULATE_PROG, PROGRESS_CLASS, 0, 10, 10, 230, 14
+    CONTROL         "", IDC_POPULATE_PROG, "msctls_progress32", 0, 10, 10, 230, 14
     LTEXT           "Fetching torrent list...", IDC_POPULATE_TEXT, 10, 32, 230, 14
 END
